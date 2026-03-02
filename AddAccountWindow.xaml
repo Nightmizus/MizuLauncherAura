@@ -24,6 +24,42 @@
         <SolidColorBrush x:Key="CardBackground" Color="White" Opacity="0.03"/>
         <SolidColorBrush x:Key="CardBorder" Color="Transparent"/>
 
+        <!-- 噪点纹理笔刷 (Noise Texture) -->
+        <DrawingBrush x:Key="NoiseBrush" 
+                      Viewport="0,0,128,128" ViewportUnits="Absolute" 
+                      TileMode="Tile" Stretch="None" Opacity="0.05">
+            <DrawingBrush.Drawing>
+                <DrawingGroup>
+                    <GeometryDrawing Geometry="M0,0 H128 V128 H0Z">
+                        <GeometryDrawing.Brush>
+                            <SolidColorBrush Color="Transparent"/>
+                        </GeometryDrawing.Brush>
+                    </GeometryDrawing>
+                    <GeometryDrawing>
+                        <GeometryDrawing.Geometry>
+                            <GeometryGroup>
+                                <EllipseGeometry Center="10,10" RadiusX="0.5" RadiusY="0.5"/>
+                                <EllipseGeometry Center="30,45" RadiusX="0.6" RadiusY="0.6"/>
+                                <EllipseGeometry Center="60,20" RadiusX="0.5" RadiusY="0.5"/>
+                                <EllipseGeometry Center="90,80" RadiusX="0.7" RadiusY="0.7"/>
+                                <EllipseGeometry Center="110,40" RadiusX="0.5" RadiusY="0.5"/>
+                                <EllipseGeometry Center="20,90" RadiusX="0.6" RadiusY="0.6"/>
+                                <EllipseGeometry Center="50,110" RadiusX="0.5" RadiusY="0.5"/>
+                                <EllipseGeometry Center="85,15" RadiusX="0.6" RadiusY="0.6"/>
+                                <EllipseGeometry Center="120,70" RadiusX="0.5" RadiusY="0.5"/>
+                                <EllipseGeometry Center="40,30" RadiusX="0.7" RadiusY="0.7"/>
+                                <EllipseGeometry Center="75,95" RadiusX="0.5" RadiusY="0.5"/>
+                                <EllipseGeometry Center="5,115" RadiusX="0.6" RadiusY="0.6"/>
+                            </GeometryGroup>
+                        </GeometryDrawing.Geometry>
+                        <GeometryDrawing.Brush>
+                            <SolidColorBrush Color="White"/>
+                        </GeometryDrawing.Brush>
+                    </GeometryDrawing>
+                </DrawingGroup>
+            </DrawingBrush.Drawing>
+        </DrawingBrush>
+
         <Style TargetType="Button" x:Key="BaseButtonStyle">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -98,6 +134,9 @@
     <Grid x:Name="MainRoot">
         <!-- 亚克力蒙层 -->
         <Border x:Name="BgTint" Background="#E0121212" CornerRadius="12"/>
+
+        <!-- 噪点蒙层 (Noise Overlay) -->
+        <Rectangle x:Name="NoiseLayer" Fill="{StaticResource NoiseBrush}" IsHitTestVisible="False" Margin="0" RadiusX="12" RadiusY="12"/>
 
         <Grid Margin="20">
             <Grid.RowDefinitions>

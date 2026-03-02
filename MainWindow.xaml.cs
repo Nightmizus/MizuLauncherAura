@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -9,6 +9,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Runtime.InteropServices;
 using Microsoft.VisualBasic;
 using CmlLib.Core;
@@ -94,12 +95,8 @@ namespace MizuLauncher
 
         private MinecraftLauncher? _launcher;
         private MinecraftPath? _baseMcPath;
-        private Point _dragStartPoint;
-        private bool _isDragging = false;
         private const string ConfigFileName = "launcher_config.json";
-        private const int MaxQuickLaunchItems = 9; // 3x3 grid
 
-        public ObservableCollection<string> QuickLaunchVersions { get; set; } = new();
         public ObservableCollection<PlayerInfo> OnlinePlayers { get; set; } = new();
         public ObservableCollection<PlayerInfo> OfflinePlayers { get; set; } = new();
         public ObservableCollection<string> DownloadableVanillaVersions { get; set; } = new();
@@ -125,9 +122,6 @@ namespace MizuLauncher
                 // 挂载系统底层句柄初始化事件，用于开启 Mica/Acrylic
                 this.SourceInitialized += MainWindow_SourceInitialized;
 
-                QuickLaunchVersions = new ObservableCollection<string>();
-                QuickLaunchItems.ItemsSource = QuickLaunchVersions;
-
                 OnlinePlayers = new ObservableCollection<PlayerInfo>();
                 ListOnlinePlayers.ItemsSource = OnlinePlayers;
 
@@ -146,7 +140,6 @@ namespace MizuLauncher
                 this.Loaded += MainWindow_Loaded;
                 this.Activated += (s, e) => UpdateBackgroundUIFromState();
                 this.Deactivated += (s, e) => UpdateBackgroundUIFromState();
-                QuickLaunchVersions.CollectionChanged += (s, e) => SaveConfig();
 
                 // 移除构造函数中的直接调用，改到 Loaded 事件中统一处理
                 // _ = UpdatePlayerUIFromState();
@@ -178,7 +171,22 @@ namespace MizuLauncher
             if (hwnd != IntPtr.Zero)
             {
                 EnableMicaBackdrop(hwnd, _currentBgType);
+                
+                // 监听系统主题颜色变化
+                HwndSource source = HwndSource.FromHwnd(hwnd);
+                source.AddHook(WndProc);
             }
+        }
+
+        private const int WM_DWMCOLORIZATIONCOLORCHANGED = 0x0320;
+
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (msg == WM_DWMCOLORIZATIONCOLORCHANGED)
+            {
+                UpdateSystemAccentColor();
+            }
+            return IntPtr.Zero;
         }
 
         #region Navigation and Background Settings
@@ -189,7 +197,6 @@ namespace MizuLauncher
             DownloadContent.Visibility = Visibility.Collapsed;
             AIChatContent.Visibility = Visibility.Collapsed;
             MoreContent.Visibility = Visibility.Collapsed;
-            PlayerSeparator.Visibility = Visibility.Visible;
         }
 
         private void BtnDownload_Click(object sender, RoutedEventArgs e)
@@ -198,7 +205,6 @@ namespace MizuLauncher
             DownloadContent.Visibility = Visibility.Visible;
             AIChatContent.Visibility = Visibility.Collapsed;
             MoreContent.Visibility = Visibility.Collapsed;
-            PlayerSeparator.Visibility = Visibility.Collapsed;
         }
 
         private void BtnAIChat_Click(object sender, RoutedEventArgs e)
@@ -207,7 +213,6 @@ namespace MizuLauncher
             DownloadContent.Visibility = Visibility.Collapsed;
             AIChatContent.Visibility = Visibility.Visible;
             MoreContent.Visibility = Visibility.Collapsed;
-            PlayerSeparator.Visibility = Visibility.Collapsed;
         }
 
         private void BtnMore_Click(object sender, RoutedEventArgs e)
@@ -216,7 +221,6 @@ namespace MizuLauncher
             DownloadContent.Visibility = Visibility.Collapsed;
             AIChatContent.Visibility = Visibility.Collapsed;
             MoreContent.Visibility = Visibility.Visible;
-            PlayerSeparator.Visibility = Visibility.Collapsed;
         }
 
         #region Download Logic
@@ -425,7 +429,7 @@ namespace MizuLauncher
                 if (ComboModSource.SelectedIndex == 0) // Modrinth
                 {
                     using var client = new System.Net.Http.HttpClient();
-                    client.DefaultRequestHeaders.Add("User-Agent", "MizuLauncher/1.0");
+                    client.DefaultRequestHeaders.Add("User-Agent", "MizuLauncher Aura/1.0");
                     var response = await client.GetStringAsync($"https://api.modrinth.com/v2/search?query={query}&limit=10");
                     var doc = JsonDocument.Parse(response);
                     foreach (var item in doc.RootElement.GetProperty("hits").EnumerateArray())
@@ -463,7 +467,7 @@ namespace MizuLauncher
                     ModVersionsPanel.Visibility = Visibility.Visible;
                     
                     using var client = new System.Net.Http.HttpClient();
-                    client.DefaultRequestHeaders.Add("User-Agent", "MizuLauncher/1.0");
+                    client.DefaultRequestHeaders.Add("User-Agent", "MizuLauncher Aura/1.0");
                     var response = await client.GetStringAsync($"https://api.modrinth.com/v2/project/{mod.ProjectId}/version");
                     var doc = JsonDocument.Parse(response);
                     
@@ -517,7 +521,7 @@ namespace MizuLauncher
                 try
                 {
                     using var client = new System.Net.Http.HttpClient();
-                    client.DefaultRequestHeaders.Add("User-Agent", "MizuLauncher/1.0");
+                    client.DefaultRequestHeaders.Add("User-Agent", "MizuLauncher Aura/1.0");
 
                     task.Status = "开始下载...";
                     // 下载到选定版本的隔离文件夹中
@@ -805,6 +809,13 @@ namespace MizuLauncher
                 if (ListVersions.Items.Count > 0)
                 {
                     ListVersions.SelectedIndex = 0;
+                    TxtCurrentVersion.Text = ListVersions.SelectedItem?.ToString() ?? "未选择版本";
+                    BtnLaunch.IsEnabled = true;
+                }
+                else
+                {
+                    TxtCurrentVersion.Text = "未找到版本";
+                    BtnLaunch.IsEnabled = false;
                 }
             }
             catch (Exception ex)
@@ -813,19 +824,144 @@ namespace MizuLauncher
             }
         }
 
+        private void ListVersions_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ListVersions.SelectedItem != null)
+            {
+                TxtCurrentVersion.Text = ListVersions.SelectedItem.ToString();
+                HideVersionOverlay();
+                BtnLaunch.IsEnabled = true;
+            }
+        }
+
+        private void BtnVersionSelect_MouseEnter(object sender, MouseEventArgs e)
+        {
+            ShowVersionOverlay();
+        }
+
+        private void BtnVersionSelect_MouseLeave(object sender, MouseEventArgs e)
+        {
+            if (!VersionListOverlay.IsMouseOver)
+            {
+                HideVersionOverlay();
+            }
+        }
+
+        private void PopupVersions_MouseEnter(object sender, MouseEventArgs e)
+        {
+            ShowVersionOverlay();
+        }
+
+        private void PopupVersions_MouseLeave(object sender, MouseEventArgs e)
+        {
+            if (!BtnVersionSelect.IsMouseOver)
+            {
+                HideVersionOverlay();
+            }
+        }
+
+        private void ShowVersionOverlay()
+        {
+            if (VersionListOverlay.Visibility == Visibility.Visible && VersionListOverlay.Opacity > 0.5) return;
+
+            VersionListOverlay.Visibility = Visibility.Visible;
+            
+            DoubleAnimation fadeAnim = new DoubleAnimation(1, TimeSpan.FromMilliseconds(250));
+            DoubleAnimation slideAnim = new DoubleAnimation(0, TimeSpan.FromMilliseconds(350))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+
+            VersionListOverlay.BeginAnimation(OpacityProperty, fadeAnim);
+            VersionOverlayTransform.BeginAnimation(TranslateTransform.YProperty, slideAnim);
+        }
+
+        private void HideVersionOverlay()
+        {
+            if (VersionListOverlay.Visibility == Visibility.Collapsed) return;
+
+            DoubleAnimation fadeAnim = new DoubleAnimation(0, TimeSpan.FromMilliseconds(200));
+            DoubleAnimation slideAnim = new DoubleAnimation(30, TimeSpan.FromMilliseconds(250))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+            };
+
+            fadeAnim.Completed += (s, e) => VersionListOverlay.Visibility = Visibility.Collapsed;
+
+            VersionListOverlay.BeginAnimation(OpacityProperty, fadeAnim);
+            VersionOverlayTransform.BeginAnimation(TranslateTransform.YProperty, slideAnim);
+        }
+
+        private void BtnPlayerCard_MouseEnter(object sender, MouseEventArgs e)
+        {
+            ShowPlayerOverlay();
+        }
+
+        private void BtnPlayerCard_MouseLeave(object sender, MouseEventArgs e)
+        {
+            if (!PlayerListOverlay.IsMouseOver)
+            {
+                HidePlayerOverlay();
+            }
+        }
+
+        private void PopupPlayers_MouseEnter(object sender, MouseEventArgs e)
+        {
+            ShowPlayerOverlay();
+        }
+
+        private void PopupPlayers_MouseLeave(object sender, MouseEventArgs e)
+        {
+            if (!BtnPlayerCard.IsMouseOver)
+            {
+                HidePlayerOverlay();
+            }
+        }
+
+        private void ShowPlayerOverlay()
+        {
+            if (PlayerListOverlay.Visibility == Visibility.Visible && PlayerListOverlay.Opacity > 0.5) return;
+
+            PlayerListOverlay.Visibility = Visibility.Visible;
+
+            DoubleAnimation fadeAnim = new DoubleAnimation(1, TimeSpan.FromMilliseconds(250));
+            DoubleAnimation slideAnim = new DoubleAnimation(0, TimeSpan.FromMilliseconds(350))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+
+            PlayerListOverlay.BeginAnimation(OpacityProperty, fadeAnim);
+            PlayerOverlayTransform.BeginAnimation(TranslateTransform.YProperty, slideAnim);
+        }
+
+        private void HidePlayerOverlay()
+        {
+            if (PlayerListOverlay.Visibility == Visibility.Collapsed) return;
+
+            DoubleAnimation fadeAnim = new DoubleAnimation(0, TimeSpan.FromMilliseconds(200));
+            DoubleAnimation slideAnim = new DoubleAnimation(20, TimeSpan.FromMilliseconds(250))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+            };
+
+            fadeAnim.Completed += (s, e) => PlayerListOverlay.Visibility = Visibility.Collapsed;
+
+            PlayerListOverlay.BeginAnimation(OpacityProperty, fadeAnim);
+            PlayerOverlayTransform.BeginAnimation(TranslateTransform.YProperty, slideAnim);
+        }
+
         #region Configuration Storage (Safe)
 
         private int _currentBgType = 3; // Default Acrylic
         private string _currentCustomColor = "#FF1E1E1E";
         private string _currentPlayerName = "添加玩家";
-        private bool _showDragHint = true;
         private string _deepSeekApiKey = "";
         private string _deepSeekModel = "deepseek-chat";
         private string _glmApiKey = "";
         private string _glmModel = "glm-4.7-flash";
         private string _aiProvider = "DeepSeek";
 
-        private string ConfigExportDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "MizuLauncher_Configs");
+        private string ConfigExportDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "MizuLauncherAura_Configs");
         private string GlmKeyPath => Path.Combine(ConfigExportDir, "glm_api_key.txt");
         private string DeepSeekKeyPath => Path.Combine(ConfigExportDir, "deepseek_api_key.txt");
 
@@ -835,12 +971,10 @@ namespace MizuLauncher
             {
                 var config = new LauncherConfig
                 {
-                    QuickLaunchVersions = QuickLaunchVersions.ToList(),
                     BackgroundType = _currentBgType,
                     CustomColor = _currentCustomColor,
                     PlayerName = _currentPlayerName,
                     Players = OnlinePlayers.Concat(OfflinePlayers).ToList(),
-                    ShowDragHint = _showDragHint,
                     DeepSeekApiKey = _deepSeekApiKey,
                     DeepSeekModel = _deepSeekModel,
                     GlmApiKey = _glmApiKey,
@@ -871,19 +1005,9 @@ namespace MizuLauncher
                     var config = JsonSerializer.Deserialize<LauncherConfig>(json);
                     if (config != null)
                     {
-                        if (config.QuickLaunchVersions != null)
-                        {
-                            QuickLaunchVersions.Clear();
-                            foreach (var v in config.QuickLaunchVersions)
-                            {
-                                if (QuickLaunchVersions.Count < MaxQuickLaunchItems)
-                                    QuickLaunchVersions.Add(v);
-                            }
-                        }
                         _currentBgType = config.BackgroundType;
                         _currentCustomColor = config.CustomColor ?? "#FF1E1E1E";
                         _currentPlayerName = config.PlayerName ?? "添加玩家";
-                        _showDragHint = config.ShowDragHint;
                         _deepSeekApiKey = config.DeepSeekApiKey ?? "";
                         _deepSeekModel = config.DeepSeekModel ?? "deepseek-chat";
                         _glmApiKey = config.GlmApiKey ?? "";
@@ -943,7 +1067,6 @@ namespace MizuLauncher
                 else
                 {
                     // No config file, ensure defaults are applied
-                    _showDragHint = true;
                     UpdateBackgroundUIFromState();
                     _ = UpdatePlayerUIFromState();
                 }
@@ -968,8 +1091,6 @@ namespace MizuLauncher
             else if (_currentBgType == 1) RadioButtonSolid.IsChecked = true;
             
             TxtCustomColor.Text = _currentCustomColor;
-            CheckShowDragHint.IsChecked = _showDragHint;
-            UpdateDragHintVisibility();
 
             IntPtr hwnd = new WindowInteropHelper(this).Handle;
             if (hwnd == IntPtr.Zero) return;
@@ -1052,6 +1173,96 @@ namespace MizuLauncher
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int dwAttribute, ref int pvAttribute, int cbAttribute);
 
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmGetColorizationColor(out uint pcbColorization, out bool pfOpaqueBlend);
+
+        private void UpdateSystemAccentColor()
+        {
+            try
+            {
+                if (DwmGetColorizationColor(out uint color, out bool opaque) == 0)
+                {
+                    // color 是 ARGB 格式
+                    byte r = (byte)((color >> 16) & 0xFF);
+                    byte g = (byte)((color >> 8) & 0xFF);
+                    byte b = (byte)(color & 0xFF);
+
+                    // 转换为 HSL 进行调整
+                    RGBtoHSL(r, g, b, out double h, out double s, out double l);
+
+                    // 核心调整：提高明度，降低饱和度以达到 "Aura" 粉嫩效果
+                    // 1. 提高明度 (Lightness): 确保至少在 0.7 以上，如果太暗则大幅提升
+                    if (l < 0.7) l = 0.75;
+                    else l = Math.Min(0.9, l + 0.1);
+
+                    // 2. 降低饱和度 (Saturation): 限制在 0.4 - 0.6 之间，防止颜色太“浓”
+                    s = Math.Clamp(s * 0.7, 0.4, 0.6);
+
+                    // 转回 RGB
+                    var systemColor = HSLtoRGB(h, s, l);
+                    this.Resources["SystemAccentBrush"] = new System.Windows.Media.SolidColorBrush(systemColor);
+                }
+            }
+            catch { }
+        }
+
+        // HSL 转换辅助函数
+        private void RGBtoHSL(byte r, byte g, byte b, out double h, out double s, out double l)
+        {
+            double rd = r / 255.0;
+            double gd = g / 255.0;
+            double bd = b / 255.0;
+            double max = Math.Max(rd, Math.Max(gd, bd));
+            double min = Math.Min(rd, Math.Min(gd, bd));
+            double delta = max - min;
+
+            l = (max + min) / 2.0;
+
+            if (delta == 0)
+            {
+                h = s = 0;
+            }
+            else
+            {
+                s = l <= 0.5 ? delta / (max + min) : delta / (2.0 - max - min);
+
+                if (rd == max) h = (gd - bd) / delta + (gd < bd ? 6 : 0);
+                else if (gd == max) h = (bd - rd) / delta + 2;
+                else h = (rd - gd) / delta + 4;
+                h /= 6.0;
+            }
+        }
+
+        private System.Windows.Media.Color HSLtoRGB(double h, double s, double l)
+        {
+            double r, g, b;
+
+            if (s == 0)
+            {
+                r = g = b = l;
+            }
+            else
+            {
+                double q = l < 0.5 ? l * (1.0 + s) : l + s - l * s;
+                double p = 2.0 * l - q;
+                r = HueToRGB(p, q, h + 1.0 / 3.0);
+                g = HueToRGB(p, q, h);
+                b = HueToRGB(p, q, h - 1.0 / 3.0);
+            }
+
+            return System.Windows.Media.Color.FromRgb((byte)(r * 255), (byte)(g * 255), (byte)(b * 255));
+        }
+
+        private double HueToRGB(double p, double q, double t)
+        {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1.0 / 6.0) return p + (q - p) * 6.0 * t;
+            if (t < 1.0 / 2.0) return q;
+            if (t < 2.0 / 3.0) return p + (q - p) * (2.0 / 3.0 - t) * 6.0;
+            return p;
+        }
+
         private void EnableMicaBackdrop(IntPtr hwnd, int type = 2)
         {
             try
@@ -1069,33 +1280,13 @@ namespace MizuLauncher
                 int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
                 int DWMWCP_ROUND = 2;
                 DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref DWMWCP_ROUND, Marshal.SizeOf(typeof(int)));
+
+                // 4. 初始化一次主题颜色
+                UpdateSystemAccentColor();
             }
             catch (Exception ex)
             {
                 WriteLog($"DWM设置失败: {ex.Message}");
-            }
-        }
-
-        private void CheckShowDragHint_Click(object sender, RoutedEventArgs e)
-        {
-            _showDragHint = CheckShowDragHint.IsChecked ?? true;
-            UpdateDragHintVisibility();
-            SaveConfig();
-        }
-
-        private void UpdateDragHintVisibility()
-        {
-            if (TxtDragHint == null) return;
-            
-            if (!_showDragHint)
-            {
-                TxtDragHint.Visibility = Visibility.Collapsed;
-            }
-            else
-            {
-                // 如果启用了提示，则由 Style 中的 DataTrigger 决定是否显示（当磁贴数为0时显示）
-                // 这里我们手动刷新一下，或者由于 Style 已经绑定了，我们可以通过设置一个本地值来覆盖或清除
-                TxtDragHint.ClearValue(TextBlock.VisibilityProperty);
             }
         }
 
@@ -1169,8 +1360,8 @@ namespace MizuLauncher
 
         private void BtnAddPlayer_Click(object sender, RoutedEventArgs e)
         {
-            // 关闭 Popup
-            BtnPlayerCard.IsChecked = false;
+            // 关闭 Overlay
+            HidePlayerOverlay();
 
             // 弹出自定义添加账号窗口
             var addWindow = new AddAccountWindow();
@@ -1214,7 +1405,7 @@ namespace MizuLauncher
                 _currentPlayerName = selected.Name;
                 await UpdatePlayerUIFromState();
                 SaveConfig();
-                BtnPlayerCard.IsChecked = false; // 关闭 Popup
+                HidePlayerOverlay(); // 关闭 Overlay
                 lb.SelectedItem = null; // 重置选择
             }
         }
@@ -1264,7 +1455,6 @@ namespace MizuLauncher
 
         public class LauncherConfig
         {
-            public System.Collections.Generic.List<string>? QuickLaunchVersions { get; set; }
             public int BackgroundType { get; set; } = 3; // Default Acrylic
             public string? CustomColor { get; set; } = "#FF1E1E1E";
             public string PlayerName { get; set; } = "添加玩家";
@@ -1293,145 +1483,6 @@ namespace MizuLauncher
 
         #endregion
 
-        #region Drag and Drop Logic (Protected)
-
-        private void ListVersions_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (e.OriginalSource is FrameworkElement fe &&
-               (fe.GetType().Name.Contains("Scroll") ||
-               (fe.TemplatedParent?.GetType().Name.Contains("Scroll") == true)))
-            {
-                return;
-            }
-            _dragStartPoint = e.GetPosition(null);
-            WriteLog("鼠标左键按下，记录坐标。");
-        }
-
-        private void ListVersions_MouseMove(object sender, MouseEventArgs e)
-        {
-            if (!_isDragging && e.LeftButton == MouseButtonState.Pressed)
-            {
-                Point mousePos = e.GetPosition(null);
-                Vector diff = _dragStartPoint - mousePos;
-
-                if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
-                    Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
-                {
-                    if (sender is ListBox listBox && listBox.SelectedItem != null)
-                    {
-                        string selectedVersion = listBox.SelectedItem.ToString() ?? "";
-                        _isDragging = true;
-
-                        WriteLog($"检测到移动，准备拖拽版本: {selectedVersion}");
-
-                        if (e.OriginalSource is UIElement uiElement)
-                        {
-                            uiElement.ReleaseMouseCapture();
-                        }
-                        Mouse.Capture(null);
-
-                        // 将系统级拖拽推迟到 UI 线程执行
-                        Dispatcher.BeginInvoke(new Action(() =>
-                        {
-                            try
-                            {
-                                WriteLog("--> 开始执行 DoDragDrop 系统方法");
-                                DragDrop.DoDragDrop(listBox, selectedVersion, DragDropEffects.Copy);
-                                WriteLog("--> DoDragDrop 执行完毕，用户松开了鼠标");
-                            }
-                            catch (Exception ex)
-                            {
-                                WriteLog($"拖拽内部异常: {ex.Message}");
-                            }
-                            finally
-                            {
-                                _isDragging = false;
-                            }
-                        }), System.Windows.Threading.DispatcherPriority.Background);
-                    }
-                }
-            }
-        }
-
-        private void QuickLaunch_DragOver(object sender, DragEventArgs e)
-        {
-            if (e.Data.GetDataPresent(DataFormats.StringFormat))
-            {
-                e.Effects = DragDropEffects.Copy;
-            }
-            else
-            {
-                e.Effects = DragDropEffects.None;
-            }
-            e.Handled = true;
-        }
-
-        private void QuickLaunch_Drop(object sender, DragEventArgs e)
-        {
-            WriteLog("触发 Drop (放下) 事件！");
-            try
-            {
-                if (QuickLaunchVersions.Count < MaxQuickLaunchItems && e.Data.GetDataPresent(DataFormats.StringFormat))
-                {
-                    string? version = e.Data.GetData(DataFormats.StringFormat) as string;
-                    WriteLog($"正在尝试将 [{version}] 加入快速启动栏");
-
-                    if (!string.IsNullOrEmpty(version) && !QuickLaunchVersions.Contains(version))
-                    {
-                        QuickLaunchVersions.Add(version);
-                        WriteLog("加入成功！");
-                    }
-                    else
-                    {
-                        WriteLog("加入失败：版本为空，或该卡片已存在。");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                WriteLog($"Drop 崩溃: {ex.Message}");
-            }
-        }
-
-        // 暂时注销单向拖拽事件
-        private void QuickLaunchCard_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e) { }
-        private void QuickLaunchCard_MouseMove(object sender, MouseEventArgs e) { }
-        private void ListVersions_DragOver(object sender, DragEventArgs e) { }
-        private void ListVersions_Drop(object sender, DragEventArgs e) { }
-
-        #endregion
-
-        #region Drag and Drop Logic (Protected)
-
-        public void DeleteQuickLaunchCard_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (sender is MenuItem menuItem && menuItem.Parent is ContextMenu contextMenu)
-                {
-                    FrameworkElement? target = contextMenu.PlacementTarget as FrameworkElement;
-                    Button? button = target as Button;
-
-                    if (button == null && target != null)
-                    {
-                        button = target.TemplatedParent as Button;
-                    }
-
-                    if (button != null && button.Content != null)
-                    {
-                        string version = button.Content.ToString() ?? "";
-                        QuickLaunchVersions.Remove(version);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine("Delete card error: " + ex.Message);
-            }
-        }
-
-        #endregion
-
         #region Launch Logic (Protected)
 
         private async void LaunchGame(string versionName)
@@ -1441,6 +1492,7 @@ namespace MizuLauncher
             try
             {
                 BtnLaunch.IsEnabled = false;
+                BorderProgress.Visibility = Visibility.Visible;
                 TxtProgressStep.Text = "正在准备...";
                 RectProgress.Width = 0;
 
@@ -1511,6 +1563,7 @@ namespace MizuLauncher
                 TxtProgressStep.Text = "游戏已启动！";
                 RectProgress.Width = BorderProgress.ActualWidth;
                 process.Start();
+                await Task.Delay(1500);
             }
             catch (Exception ex)
             {
@@ -1520,6 +1573,7 @@ namespace MizuLauncher
             finally
             {
                 BtnLaunch.IsEnabled = true;
+                BorderProgress.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -1548,32 +1602,15 @@ namespace MizuLauncher
             }
         }
 
-        private void QuickLaunchCard_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (sender is Button btn && btn.Content != null)
-                {
-                    LaunchGame(btn.Content.ToString() ?? "");
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine("Quick launch error: " + ex.Message);
-            }
-        }
-
         private void BtnVersionSettings_Click(object sender, RoutedEventArgs e)
         {
             if (VersionSettingsPanel.Visibility == Visibility.Collapsed)
             {
-                QuickLaunchPanel.Visibility = Visibility.Collapsed;
                 VersionSettingsPanel.Visibility = Visibility.Visible;
                 RefreshSavedConfigs();
             }
             else
             {
-                QuickLaunchPanel.Visibility = Visibility.Visible;
                 VersionSettingsPanel.Visibility = Visibility.Collapsed;
             }
         }

@@ -21,7 +21,7 @@ namespace MizuLauncher
         {
             _mainWindow = mainWindow;
             _httpClient = new HttpClient();
-            _httpClient.DefaultRequestHeaders.Add("User-Agent", "MizuLauncher/1.0");
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", "MizuLauncher Aura/1.0");
         }
 
         [KernelFunction, Description("搜索 Minecraft 的 Mod。")]
