@@ -31,21 +31,29 @@
         <Style TargetType="TextBox">
             <Setter Property="Background" Value="#15FFFFFF"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="SelectionBrush" Value="#40FFFFFF"/>
+            <Setter Property="CaretBrush" Value="White"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="Padding" Value="10,0"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
-                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="8">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8">
                             <ScrollViewer x:Name="PART_ContentHost"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="#20FFFFFF"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#20FFFFFF"/>
                             </Trigger>
                             <Trigger Property="IsFocused" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="#25FFFFFF"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#40FFFFFF"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -56,21 +64,29 @@
         <Style TargetType="PasswordBox">
             <Setter Property="Background" Value="#15FFFFFF"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="SelectionBrush" Value="#40FFFFFF"/>
+            <Setter Property="CaretBrush" Value="White"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="Padding" Value="10,0"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="PasswordBox">
-                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="8">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8">
                             <ScrollViewer x:Name="PART_ContentHost"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="#20FFFFFF"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#20FFFFFF"/>
                             </Trigger>
                             <Trigger Property="IsFocused" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="#25FFFFFF"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#40FFFFFF"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -124,13 +140,90 @@
                                               HorizontalAlignment="Left" 
                                               IsHitTestVisible="false"/>
                             <Popup x:Name="PART_Popup" AllowsTransparency="true" Grid.ColumnSpan="2" IsOpen="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" Margin="1" Placement="Bottom" PopupAnimation="Slide">
-                                <Border x:Name="dropDownBorder" Background="#EF1E1E1E" CornerRadius="8" Margin="0,4,0,0" BorderBrush="#20FFFFFF" BorderThickness="1" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                                <Border x:Name="dropDownBorder" Background="#F01E1E1E" CornerRadius="10" Margin="0,4,0,0" BorderBrush="#30FFFFFF" BorderThickness="1" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
                                     <ScrollViewer x:Name="DropDownScrollViewer" MaxHeight="300">
                                         <ItemsPresenter x:Name="ItemsPresenter" KeyboardNavigation.DirectionalNavigation="Contained" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
                                     </ScrollViewer>
                                 </Border>
                             </Popup>
                         </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 全局右键菜单样式，修复黑底黑字问题 -->
+        <Style TargetType="ContextMenu">
+            <Setter Property="Background" Value="#F02A2A2A"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#30FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="2"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ContextMenu">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10">
+                            <ItemsPresenter/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="MenuItem">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="6" Margin="2">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="Icon"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="Shortcut"/>
+                                </Grid.ColumnDefinitions>
+                                <ContentPresenter x:Name="Icon" ContentSource="Icon" Margin="8,0" VerticalAlignment="Center"/>
+                                <ContentPresenter Grid.Column="1" ContentSource="Header" Margin="{TemplateBinding Padding}" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#20FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#20FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#60FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 全局提示框样式 -->
+        <Style TargetType="ToolTip">
+            <Setter Property="Background" Value="#F02A2A2A"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#30FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToolTip">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8">
+                            <ContentPresenter/>
+                        </Border>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -245,23 +338,60 @@
         <Style x:Key="NavButtonStyle" TargetType="RadioButton">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Foreground" Value="#80FFFFFF"/>
+            <Setter Property="Foreground" Value="#A0FFFFFF"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Padding" Value="15,6"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="12" Padding="{TemplateBinding Padding}">
+                        <Grid>
+                            <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="10" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <Border x:Name="Indicator" Height="3" Width="12" Background="White" VerticalAlignment="Bottom" Margin="0,0,0,2" CornerRadius="1.5" Visibility="Hidden"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#15FFFFFF"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter TargetName="Indicator" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#10FFFFFF"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#35FFFFFF"/>
-                                <Setter Property="Foreground" Value="White"/>
-                            </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#15FFFFFF"/>
+                                <Setter TargetName="Bd" Property="Background" Value="#F0F0F0"/>
+                                <Setter Property="Opacity" Value="0.9"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Opacity" Value="0.8"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Background" Value="#30FFFFFF"/>
+                                <Setter Property="Foreground" Value="#60FFFFFF"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -563,9 +693,9 @@
                                         </StackPanel>
 
                                         <TextBlock x:Name="TxtLoaderVersionLabel" Text="加载器版本" FontSize="14" Margin="0,0,0,10" Visibility="Collapsed"/>
-                                        <ComboBox x:Name="ComboLoaderVersions" Height="35" Margin="0,0,0,20" Background="#20FFFFFF" Foreground="White" BorderThickness="0" Visibility="Collapsed"/>
+                                        <ComboBox x:Name="ComboLoaderVersions" Height="35" Margin="0,0,0,20" Visibility="Collapsed"/>
 
-                                        <Button x:Name="BtnInstallVersion" Content="开始安装" Style="{StaticResource BaseButtonStyle}" Height="40" Width="120" HorizontalAlignment="Left" Click="BtnInstallVersion_Click" Tag="12"/>
+                                        <Button x:Name="BtnInstallVersion" Content="开始安装" Style="{StaticResource PrimaryButtonStyle}" Width="150" HorizontalAlignment="Left" Click="BtnInstallVersion_Click"/>
                                     </StackPanel>
                                 </Grid>
                             </Border>
@@ -584,12 +714,12 @@
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBox x:Name="TxtModSearchQuery" Height="35" Background="#20FFFFFF" Foreground="White" BorderThickness="0" VerticalContentAlignment="Center" Padding="10,0" Tag="搜索模组..."/>
-                                <ComboBox Grid.Column="1" x:Name="ComboModSource" Width="120" Height="35" Margin="10,0,0,0" Background="#20FFFFFF" Foreground="White" BorderThickness="0">
+                                <TextBox x:Name="TxtModSearchQuery" Height="38" Padding="15,0" Tag="搜索模组..."/>
+                                <ComboBox Grid.Column="1" x:Name="ComboModSource" Width="120" Height="38" Margin="10,0,0,0">
                                     <ComboBoxItem Content="Modrinth" IsSelected="True"/>
                                     <ComboBoxItem Content="CurseForge"/>
                                 </ComboBox>
-                                <Button Grid.Column="2" Content="搜索" Width="80" Height="35" Margin="10,0,0,0" Style="{StaticResource BaseButtonStyle}" Click="BtnModSearch_Click" Tag="8"/>
+                                <Button Grid.Column="2" Content="搜索" Width="100" Height="38" Margin="10,0,0,0" Style="{StaticResource PrimaryButtonStyle}" Click="BtnModSearch_Click"/>
                             </Grid>
 
                             <!-- 搜索结果列表 -->
@@ -782,9 +912,9 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBox x:Name="TxtAIChatInput" Height="42" Margin="0"/>
+                        <TextBox x:Name="TxtAIChatInput" Height="42" Margin="0" Padding="15,0" Tag="输入消息..."/>
                         <Button Grid.Column="1" Content="发送" Click="BtnAIChatSend_Click" 
-                                Style="{StaticResource BaseButtonStyle}" Width="80" Height="42" Margin="10,0,0,0"/>
+                                Style="{StaticResource PrimaryButtonStyle}" Width="100" Height="42" Margin="10,0,0,0"/>
                     </Grid>
                 </Grid>
             </Grid>
@@ -865,18 +995,22 @@
                     <Button x:Name="BtnVersionSettings" Content="" FontFamily="Segoe MDL2 Assets" Style="{StaticResource BaseButtonStyle}" Tag="{StaticResource MainCornerRadius}" Foreground="#40FFFFFF" FontSize="20" Width="48" Height="48" Click="BtnVersionSettings_Click"/>
                 </Border>
 
-                <Button x:Name="BtnLaunch" Grid.Column="3" Content="启动游戏" Click="BtnLaunch_Click" VerticalAlignment="Center" Height="48" Width="140" Margin="6,0,0,0" FontWeight="Bold" FontSize="15" IsEnabled="False">
+                <Button x:Name="BtnLaunch" Grid.Column="3" Content="启动游戏" Click="BtnLaunch_Click" VerticalAlignment="Center" Height="48" Width="140" Margin="6,0,0,0" FontWeight="Bold" FontSize="16" IsEnabled="False">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
-                            <Border x:Name="Bd" Background="White" CornerRadius="{StaticResource MainCornerRadius}">
+                            <Border x:Name="Bd" Background="White" CornerRadius="12">
                                 <ContentPresenter x:Name="Presenter" HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="Black"/>
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter TargetName="Bd" Property="Background" Value="#F0F0F0"/>
+                                    <Setter Property="Opacity" Value="0.9"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter Property="Opacity" Value="0.8"/>
                                 </Trigger>
                                 <Trigger Property="IsEnabled" Value="False">
-                                    <Setter TargetName="Bd" Property="Background" Value="#30FFFFFF"/>
+                                    <Setter TargetName="Bd" Property="Background" Value="#20FFFFFF"/>
                                     <Setter TargetName="Presenter" Property="TextElement.Foreground" Value="#60FFFFFF"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
