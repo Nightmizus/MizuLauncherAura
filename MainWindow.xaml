@@ -559,7 +559,6 @@
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center" WindowChrome.IsHitTestVisibleInChrome="True">
                     <RadioButton x:Name="BtnHome" Content="首页" Style="{StaticResource NavButtonStyle}" IsChecked="True" Click="BtnHome_Click" GroupName="NavGroup"/>
                     <RadioButton x:Name="BtnDownload" Content="下载" Style="{StaticResource NavButtonStyle}" Margin="10,0,0,0" Click="BtnDownload_Click" GroupName="NavGroup"/>
-                    <RadioButton x:Name="BtnAIChat" Content="AI 对话" Style="{StaticResource NavButtonStyle}" Margin="10,0,0,0" Click="BtnAIChat_Click" GroupName="NavGroup"/>
                     <RadioButton x:Name="BtnMore" Content="更多" Style="{StaticResource NavButtonStyle}" Margin="10,0,0,0" Click="BtnMore_Click" GroupName="NavGroup"/>
                 </StackPanel>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True" Margin="0,0,0,0" VerticalAlignment="Center">
@@ -844,31 +843,6 @@
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>
-
-                <!-- AI 对话内容 -->
-                <Grid x:Name="AIChatContent" Visibility="Collapsed">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    
-                    <Border Margin="10" Background="#15FFFFFF" CornerRadius="12">
-                        <TextBox x:Name="TxtAIResponse" Padding="15" FontSize="15" Foreground="White" 
-                                 Background="Transparent" BorderThickness="0"
-                                 IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
-                                 VerticalScrollBarVisibility="Auto" Text="你好！我是你的 AI 助手，有什么可以帮你的吗？"/>
-                    </Border>
-
-                    <Grid Grid.Row="1" Margin="10,0,10,10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBox x:Name="TxtAIChatInput" Height="42" Margin="0" Padding="15,0" Tag="输入消息..."/>
-                        <Button Grid.Column="1" Content="发送" Click="BtnAIChatSend_Click" 
-                                Style="{StaticResource PrimaryButtonStyle}" Width="100" Height="42" Margin="10,0,0,0"/>
-                    </Grid>
-                </Grid>
             </Grid>
 
             <Grid Grid.Row="2" Margin="20,0,20,20">
@@ -923,14 +897,34 @@
                         </ToggleButton>
                     </Grid>
 
-                    <Border Grid.Column="1" Background="{StaticResource CardBackground}" CornerRadius="{StaticResource MainCornerRadius}" 
-                            Margin="6,0" VerticalAlignment="Center" Height="48" BorderBrush="{StaticResource VisibleBorderBrush}" BorderThickness="1"
-                            x:Name="BorderProgress" ClipToBounds="True" Visibility="Collapsed">
-                        <Grid>
-                            <Rectangle x:Name="RectProgress" Fill="#40FFFFFF" HorizontalAlignment="Left" Width="0" RadiusX="12" RadiusY="12"/>
-                            <TextBlock x:Name="TxtProgressStep" Text="等待中..." HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11" Foreground="White" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="5,0"/>
-                        </Grid>
-                    </Border>
+                    <Grid Grid.Column="1" Margin="6,0" VerticalAlignment="Center" Height="48">
+                        <!-- AI 输入框 -->
+                        <Border x:Name="BorderAIChat" Background="{StaticResource CardBackground}" CornerRadius="{StaticResource MainCornerRadius}" 
+                                BorderBrush="{StaticResource VisibleBorderBrush}" BorderThickness="1" Visibility="Visible">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="TxtAIChatInput" Padding="15,0" Tag="输入消息并按回车发送..." 
+                                         VerticalContentAlignment="Center" Background="Transparent" BorderThickness="0"
+                                         KeyDown="TxtAIChatInput_KeyDown"/>
+                                <Button Grid.Column="1" Content="" FontFamily="Segoe MDL2 Assets" 
+                                        Style="{StaticResource BaseButtonStyle}" Width="40" Height="48" 
+                                        Click="BtnAIChatSend_Click" ToolTip="发送消息"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- 进度条 -->
+                        <Border x:Name="BorderProgress" Background="{StaticResource CardBackground}" CornerRadius="{StaticResource MainCornerRadius}" 
+                                BorderBrush="{StaticResource VisibleBorderBrush}" BorderThickness="1"
+                                ClipToBounds="True" Visibility="Collapsed" MouseDown="BorderProgress_MouseDown" Cursor="Hand">
+                            <Grid>
+                                <Rectangle x:Name="RectProgress" Fill="#40FFFFFF" HorizontalAlignment="Left" Width="0" RadiusX="12" RadiusY="12"/>
+                                <TextBlock x:Name="TxtProgressStep" Text="等待中..." HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="11" Foreground="White" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="5,0"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
 
                     <Border Grid.Column="2" Background="Transparent" CornerRadius="{StaticResource MainCornerRadius}" 
                             Margin="6,0" VerticalAlignment="Center" Height="48" Width="48" BorderBrush="Transparent" BorderThickness="0">
@@ -941,6 +935,10 @@
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border x:Name="Bd" Background="{DynamicResource SystemAccentBrush}" CornerRadius="12">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="{Binding Background.Color, ElementName=Bd}" 
+                                                          BlurRadius="100" Opacity="0.4" ShadowDepth="0"/>
+                                    </Border.Effect>
                                     <ContentPresenter x:Name="Presenter" HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="Black"/>
                                 </Border>
                                 <ControlTemplate.Triggers>
@@ -953,6 +951,7 @@
                                     <Trigger Property="IsEnabled" Value="False">
                                         <Setter TargetName="Bd" Property="Background" Value="#20FFFFFF"/>
                                         <Setter TargetName="Presenter" Property="TextElement.Foreground" Value="#40000000"/>
+                                        <Setter TargetName="Bd" Property="Effect" Value="{x:Null}"/>
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>

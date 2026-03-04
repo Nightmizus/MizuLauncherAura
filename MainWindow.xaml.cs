@@ -95,6 +95,7 @@ namespace MizuLauncher
 
         private MinecraftLauncher? _launcher;
         private MinecraftPath? _baseMcPath;
+        private AIOutputWindow? _aiOutputWindow;
         private const string ConfigFileName = "launcher_config.json";
 
         public ObservableCollection<PlayerInfo> OnlinePlayers { get; set; } = new();
@@ -195,7 +196,6 @@ namespace MizuLauncher
         {
             HomeContent.Visibility = Visibility.Visible;
             DownloadContent.Visibility = Visibility.Collapsed;
-            AIChatContent.Visibility = Visibility.Collapsed;
             MoreContent.Visibility = Visibility.Collapsed;
         }
 
@@ -203,15 +203,6 @@ namespace MizuLauncher
         {
             HomeContent.Visibility = Visibility.Collapsed;
             DownloadContent.Visibility = Visibility.Visible;
-            AIChatContent.Visibility = Visibility.Collapsed;
-            MoreContent.Visibility = Visibility.Collapsed;
-        }
-
-        private void BtnAIChat_Click(object sender, RoutedEventArgs e)
-        {
-            HomeContent.Visibility = Visibility.Collapsed;
-            DownloadContent.Visibility = Visibility.Collapsed;
-            AIChatContent.Visibility = Visibility.Visible;
             MoreContent.Visibility = Visibility.Collapsed;
         }
 
@@ -219,7 +210,6 @@ namespace MizuLauncher
         {
             HomeContent.Visibility = Visibility.Collapsed;
             DownloadContent.Visibility = Visibility.Collapsed;
-            AIChatContent.Visibility = Visibility.Collapsed;
             MoreContent.Visibility = Visibility.Visible;
         }
 
@@ -636,12 +626,35 @@ namespace MizuLauncher
             {
                 try
                 {
+                    if (BorderProgress.Visibility == Visibility.Collapsed)
+                    {
+                        BorderProgress.Visibility = Visibility.Visible;
+                        BorderAIChat.Visibility = Visibility.Collapsed;
+                        _isTaskCompleted = false;
+                    }
+
                     TxtProgressStep.Text = status;
                     if (progress >= 0)
                         RectProgress.Width = Math.Clamp(progress, 0, 1) * BorderProgress.ActualWidth;
+
+                    if (progress >= 1.0)
+                    {
+                        _isTaskCompleted = true;
+                        TxtProgressStep.Text += " (点击关闭)";
+                    }
                 }
                 catch { }
             });
+        }
+
+        private void BorderProgress_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (_isTaskCompleted)
+            {
+                BorderProgress.Visibility = Visibility.Collapsed;
+                BorderAIChat.Visibility = Visibility.Visible;
+                _isTaskCompleted = false;
+            }
         }
 
         private async void BtnAIChatSend_Click(object sender, RoutedEventArgs e)
@@ -676,60 +689,89 @@ namespace MizuLauncher
                 currentEndpoint = new Uri("https://api.deepseek.com/v1");
             }
 
-            TxtAIResponse.Text = "思考中...";
+            EnsureAIOutputWindow();
+            // 移除了这里的 ShowAtPosition，改为在完成后显示
+
             TxtAIChatInput.Clear();
 
             try
             {
-                // 获取当前选择的版本信息
                 string selectedVersion = ListVersions.SelectedItem?.ToString() ?? "未选择";
-                
-                // 构造系统提示词，包含当前环境信息
                 string systemPrompt = $@"你是一个专业的 Minecraft 启动器助手。
 当前用户选择的游戏版本是：{selectedVersion}。
-你的任务是帮助用户管理模组、解决问题，以及安装新的游戏版本或核心。
+你的任务是帮助用户管理模组、解决问题，以及安装新的游戏版本、核心、光影包和材质包。
 
-当用户要求下载模组时：
-1. 必须先使用 SearchModAsync 搜索模组。
-2. 然后使用 GetModVersionsAsync 获取对应版本和加载器的版本列表。
-3. 最后选择正确的下载链接调用 DownloadModAsync。
+当用户要求下载或安装模组 (Mod) 时：
+1. 先使用 ListLocalModsAsync 查看当前版本已有的模组，避免重复安装。
+2. 使用 SearchModAsync 搜索模组。
+3. 使用 GetResourceVersionsAsync 获取对应版本和加载器的版本列表。
+4. 调用 InstallModWithDependenciesAsync 安装。
+
+当用户要求安装光影包 (Shader Pack) 时：
+1. **必须**先调用 EnsureShaderLoaderAsync 确保环境有光影加载器（如 Iris/Oculus）。
+2. 使用 SearchShaderPackAsync 搜索光影。
+3. 使用 GetResourceVersionsAsync 获取版本。
+4. 调用 DownloadResourceAsync (type: shader) 下载。
+
+当用户要求安装材质包 (Resource Pack) 时：
+1. 使用 SearchResourcePackAsync 搜索。
+2. 使用 GetResourceVersionsAsync 获取版本。
+3. 调用 DownloadResourceAsync (type: resourcepack) 下载。
+
+当用户要求删除资源时：
+1. 使用 ListLocalModsAsync / ListLocalShaderPacksAsync / ListLocalResourcePacksAsync 确认文件名。
+2. 使用 DeleteResourceAsync (type: mod/shader/resourcepack) 进行删除。
 
 当用户要求安装新版本或核心时：
 1. 如果是安装纯净版，直接调用 InstallVanillaAsync。
 2. 如果是安装 Forge，先调用 GetForgeVersionsAsync 获取可用版本，然后调用 InstallForgeAsync。
-3. 如果用户没指定具体版本（如“安装 1.20.1”），默认安装纯净版；如果指定了核心（如“安装 1.20.1 的 forge”），则按需操作。
+3. 如果是安装 NeoForge，先调用 GetNeoForgeVersionsAsync 获取可用版本，然后调用 InstallNeoForgeAsync。
+4. 如果是安装 Fabric，先调用 GetFabricVersionsAsync 获取可用版本，然后调用 InstallFabricAsync。
+5. 如果是安装 Quilt，先调用 GetQuiltVersionsAsync 获取可用版本，然后调用 InstallQuiltAsync。
 
-请始终确保下载的模组版本与用户当前选择的游戏版本（{selectedVersion}）和加载器兼容。";
+请始终确保下载的资源版本与用户当前选择的游戏版本（{selectedVersion}）兼容。";
 
-                var builder = Kernel.CreateBuilder();
-                
-                // 使用 OpenAI 接口兼容 DeepSeek 或 GLM
-                builder.AddOpenAIChatCompletion(
-                    modelId: currentModelId,
-                    apiKey: currentApiKey,
-                    endpoint: currentEndpoint
-                );
+                var kernel = Kernel.CreateBuilder()
+                    .AddOpenAIChatCompletion(modelId: currentModelId, apiKey: currentApiKey, endpoint: currentEndpoint)
+                    .Build();
 
-                builder.Plugins.AddFromObject(new MinecraftResourcePlugin(this));
-                var kernel = builder.Build();
+                kernel.Plugins.AddFromObject(new MinecraftResourcePlugin(this));
 
-                // 开启自动函数调用
-                var executionSettings = new OpenAIPromptExecutionSettings 
-                { 
-                    ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions 
-                };
-
+                var executionSettings = new OpenAIPromptExecutionSettings { ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions };
                 var chatHistory = new ChatHistory(systemPrompt);
                 chatHistory.AddUserMessage(userInput);
 
                 var chatService = kernel.GetRequiredService<IChatCompletionService>();
                 var result = await chatService.GetChatMessageContentAsync(chatHistory, executionSettings, kernel);
 
-                TxtAIResponse.Text = result.Content ?? "无响应内容";
+                if (_aiOutputWindow != null)
+                {
+                    _aiOutputWindow.SetResponse(result.Content ?? "无响应内容");
+                    
+                    // 计算弹出位置并显示
+                    double left = this.Left + (this.Width - _aiOutputWindow.Width) / 2;
+                    double top = this.Top + this.Height - 100;
+                    _aiOutputWindow.ShowAtPosition(left, top);
+                }
             }
             catch (Exception ex)
             {
-                TxtAIResponse.Text = $"错误: {ex.Message}";
+                if (_aiOutputWindow != null)
+                {
+                    _aiOutputWindow.SetResponse($"错误: {ex.Message}");
+                    // 发生错误也弹出，否则用户不知道失败了
+                    double left = this.Left + (this.Width - _aiOutputWindow.Width) / 2;
+                    double top = this.Top + this.Height - 100;
+                    _aiOutputWindow.ShowAtPosition(left, top);
+                }
+            }
+        }
+
+        private void EnsureAIOutputWindow()
+        {
+            if (_aiOutputWindow == null)
+            {
+                _aiOutputWindow = new AIOutputWindow();
             }
         }
 
@@ -960,6 +1002,7 @@ namespace MizuLauncher
         private string _glmApiKey = "";
         private string _glmModel = "glm-4.7-flash";
         private string _aiProvider = "DeepSeek";
+        private bool _isTaskCompleted = false;
 
         private string ConfigExportDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "MizuLauncherAura_Configs");
         private string GlmKeyPath => Path.Combine(ConfigExportDir, "glm_api_key.txt");
@@ -1478,6 +1521,10 @@ namespace MizuLauncher
 
         private void BtnClose_Click(object sender, RoutedEventArgs e)
         {
+            if (_aiOutputWindow != null)
+            {
+                _aiOutputWindow.Close();
+            }
             this.Close();
         }
 
@@ -1492,7 +1539,9 @@ namespace MizuLauncher
             try
             {
                 BtnLaunch.IsEnabled = false;
+                _isTaskCompleted = false;
                 BorderProgress.Visibility = Visibility.Visible;
+                BorderAIChat.Visibility = Visibility.Collapsed;
                 TxtProgressStep.Text = "正在准备...";
                 RectProgress.Width = 0;
 
@@ -1560,20 +1609,22 @@ namespace MizuLauncher
                 TxtProgressStep.Text = "正在校验资源...";
                 var process = await currentLauncher.InstallAndBuildProcessAsync(versionName, launchOption);
 
-                TxtProgressStep.Text = "游戏已启动！";
+                _isTaskCompleted = true;
+                TxtProgressStep.Text = "游戏已启动！(点击关闭)";
                 RectProgress.Width = BorderProgress.ActualWidth;
                 process.Start();
-                await Task.Delay(1500);
+                // 不再自动延迟并关闭，等待用户点击
             }
             catch (Exception ex)
             {
-                TxtProgressStep.Text = "启动失败";
+                TxtProgressStep.Text = "启动失败 (点击关闭)";
+                _isTaskCompleted = true;
                 MessageBox.Show("启动失败: " + ex.Message, "错误");
             }
             finally
             {
                 BtnLaunch.IsEnabled = true;
-                BorderProgress.Visibility = Visibility.Collapsed;
+                // 不再在这里设置 Visibility，交由用户点击或下次启动时处理
             }
         }
 
