@@ -693,6 +693,7 @@ namespace MizuLauncher
             // 移除了这里的 ShowAtPosition，改为在完成后显示
 
             TxtAIChatInput.Clear();
+            UpdateMainProgress("AI 操作中...", 0.1);
 
             try
             {
@@ -701,6 +702,8 @@ namespace MizuLauncher
 当前用户选择的游戏版本是：{selectedVersion}。
 你的任务是帮助用户管理模组、解决问题，以及安装新的游戏版本、核心、光影包和材质包。
 
+**重要原则：在执行任何安装、下载或添加操作之前，必须先检查该资源是否已经安装或存在。**
+
 当用户要求下载或安装模组 (Mod) 时：
 1. 先使用 ListLocalModsAsync 查看当前版本已有的模组，避免重复安装。
 2. 使用 SearchModAsync 搜索模组。
@@ -708,15 +711,17 @@ namespace MizuLauncher
 4. 调用 InstallModWithDependenciesAsync 安装。
 
 当用户要求安装光影包 (Shader Pack) 时：
-1. **必须**先调用 EnsureShaderLoaderAsync 确保环境有光影加载器（如 Iris/Oculus）。
-2. 使用 SearchShaderPackAsync 搜索光影。
-3. 使用 GetResourceVersionsAsync 获取版本。
-4. 调用 DownloadResourceAsync (type: shader) 下载。
+1. 先调用 ListLocalShaderPacksAsync 检查是否已安装。
+2. **必须**先调用 EnsureShaderLoaderAsync 确保环境有光影加载器（如 Iris/Oculus）。
+3. 使用 SearchShaderPackAsync 搜索光影。
+4. 使用 GetResourceVersionsAsync 获取版本。
+5. 调用 DownloadResourceAsync (type: shader) 下载。
 
 当用户要求安装材质包 (Resource Pack) 时：
-1. 使用 SearchResourcePackAsync 搜索。
-2. 使用 GetResourceVersionsAsync 获取版本。
-3. 调用 DownloadResourceAsync (type: resourcepack) 下载。
+1. 先调用 ListLocalResourcePacksAsync 检查是否已安装。
+2. 使用 SearchResourcePackAsync 搜索。
+3. 使用 GetResourceVersionsAsync 获取版本。
+4. 调用 DownloadResourceAsync (type: resourcepack) 下载。
 
 当用户要求删除资源时：
 1. 使用 ListLocalModsAsync / ListLocalShaderPacksAsync / ListLocalResourcePacksAsync 确认文件名。
@@ -753,9 +758,12 @@ namespace MizuLauncher
                     double top = this.Top + this.Height - 100;
                     _aiOutputWindow.ShowAtPosition(left, top);
                 }
+
+                UpdateMainProgress("AI 操作完成", 1.0);
             }
             catch (Exception ex)
             {
+                UpdateMainProgress($"错误: {ex.Message}", 1.0);
                 if (_aiOutputWindow != null)
                 {
                     _aiOutputWindow.SetResponse($"错误: {ex.Message}");
