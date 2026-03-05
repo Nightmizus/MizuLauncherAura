@@ -616,6 +616,16 @@ namespace MizuLauncher
             }
         }
 
+        private void ChkFakeMicrosoft_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is CheckBox chk)
+            {
+                _fakeMicrosoftAccount = chk.IsChecked ?? false;
+                _ = UpdatePlayerUIFromState();
+                SaveConfig();
+            }
+        }
+
         public CmlLib.Core.MinecraftPath? GetBaseMcPath() => _baseMcPath;
         public CmlLib.Core.MinecraftLauncher? GetLauncher() => _launcher;
         public void CallRefreshVersionList() => RefreshVersionList();
@@ -1011,6 +1021,7 @@ namespace MizuLauncher
         private string _glmModel = "glm-4.7-flash";
         private string _aiProvider = "DeepSeek";
         private bool _isTaskCompleted = false;
+        private bool _fakeMicrosoftAccount = false;
 
         private string ConfigExportDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "MizuLauncherAura_Configs");
         private string GlmKeyPath => Path.Combine(ConfigExportDir, "glm_api_key.txt");
@@ -1030,7 +1041,8 @@ namespace MizuLauncher
                     DeepSeekModel = _deepSeekModel,
                     GlmApiKey = _glmApiKey,
                     GlmModel = _glmModel,
-                    AiProvider = _aiProvider
+                    AiProvider = _aiProvider,
+                    FakeMicrosoftAccount = _fakeMicrosoftAccount
                 };
                 string json = JsonSerializer.Serialize(config);
                 File.WriteAllText(ConfigFileName, json);
@@ -1064,6 +1076,9 @@ namespace MizuLauncher
                         _glmApiKey = config.GlmApiKey ?? "";
                         _glmModel = config.GlmModel ?? "glm-4.7-flash";
                         _aiProvider = config.AiProvider ?? "DeepSeek";
+                        _fakeMicrosoftAccount = config.FakeMicrosoftAccount;
+
+                        ChkFakeMicrosoft.IsChecked = _fakeMicrosoftAccount;
 
                         // 从桌面模拟 AppData 文件夹恢复 (优先级更高，模拟实时同步)
                         if (File.Exists(GlmKeyPath)) _glmApiKey = File.ReadAllText(GlmKeyPath).Trim();
@@ -1353,13 +1368,30 @@ namespace MizuLauncher
                 var currentPlayer = OnlinePlayers.FirstOrDefault(p => p.Name == _currentPlayerName)
                                   ?? OfflinePlayers.FirstOrDefault(p => p.Name == _currentPlayerName);
 
-                if (currentPlayer != null)
+                if (_fakeMicrosoftAccount)
+                {
+                    TxtPlayerType.Text = "正版账号";
+                }
+                else if (currentPlayer != null)
                 {
                     TxtPlayerType.Text = currentPlayer.IsOnline ? "正版账号" : "离线模式";
                 }
                 else
                 {
                     TxtPlayerType.Text = "离线模式";
+                }
+
+                // 更新玩家列表中的 Header
+                if (_fakeMicrosoftAccount)
+                {
+                    TxtOfflineHeader.Text = "正版账号";
+                    // 如果开启了伪装，隐藏分隔线以让列表看起来更像一个整体（可选）
+                    // PlayerListSeparator.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    TxtOfflineHeader.Text = "离线账号";
+                    // PlayerListSeparator.Visibility = Visibility.Visible;
                 }
 
                 var avatar = await LittleSkinFetcher.GetAvatarAsync(_currentPlayerName);
@@ -1516,6 +1548,7 @@ namespace MizuLauncher
             public string? GlmApiKey { get; set; }
             public string? GlmModel { get; set; }
             public string? AiProvider { get; set; } = "DeepSeek";
+            public bool FakeMicrosoftAccount { get; set; } = false;
         }
 
         #endregion

@@ -778,7 +778,9 @@
                             <Border Background="{StaticResource CardBackground}" CornerRadius="12" Padding="20" Margin="0,0,0,15">
                                 <StackPanel>
                                     <TextBlock Text="个性化" FontSize="18" FontWeight="Bold" Margin="0,0,0,20"/>
-                                    
+
+                                    <CheckBox x:Name="ChkFakeMicrosoft" Content="假装有正版账号" Foreground="White" Margin="0,0,0,20" Click="ChkFakeMicrosoft_Click"/>
+
                                     <TextBlock Text="背景效果" FontSize="13" Foreground="#B0FFFFFF" Margin="0,0,0,8"/>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
                                         <RadioButton x:Name="RadioMica" Content="云母 (Mica)" Click="RadioBg_Click" Margin="0,0,20,0" Foreground="White"/>
@@ -993,14 +995,14 @@
             <StackPanel Margin="5">
                 <Button Content="+" FontSize="18" FontWeight="Bold" Style="{StaticResource BaseButtonStyle}" Foreground="#80FFFFFF" Height="35" Click="BtnAddPlayer_Click"/>
                 
-                <TextBlock Text="正版账号" Foreground="#60FFFFFF" FontSize="10" Margin="10,5,0,2"/>
+                <TextBlock x:Name="TxtOnlineHeader" Text="正版账号" Foreground="#60FFFFFF" FontSize="10" Margin="10,5,0,2"/>
                 <ListBox x:Name="ListOnlinePlayers" Background="Transparent" BorderThickness="0" MaxHeight="150"
                          ItemContainerStyle="{StaticResource PlayerListItemStyle}"
                          SelectionChanged="ListPlayers_SelectionChanged"/>
 
-                <Border Background="#20FFFFFF" Height="1" Margin="10,5"/>
+                <Border x:Name="PlayerListSeparator" Background="#20FFFFFF" Height="1" Margin="10,5"/>
 
-                <TextBlock Text="离线账号" Foreground="#60FFFFFF" FontSize="10" Margin="10,5,0,2"/>
+                <TextBlock x:Name="TxtOfflineHeader" Text="离线账号" Foreground="#60FFFFFF" FontSize="10" Margin="10,5,0,2"/>
                 <ListBox x:Name="ListOfflinePlayers" Background="Transparent" BorderThickness="0" MaxHeight="250"
                          ItemContainerStyle="{StaticResource PlayerListItemStyle}"
                          SelectionChanged="ListPlayers_SelectionChanged"/>
