@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -79,6 +80,24 @@ namespace MizuLauncher
         protected void OnPropertyChanged(string name) => PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(name));
     }
 
+    public class VersionItemInfo
+    {
+        public string? Name { get; set; }
+        public string? IconPath { get; set; }
+        public string? TypeDisplay { get; set; } // 原版/Forge/Fabric
+        public string? VersionDisplay { get; set; } // 1.XX.X
+        public string? LoaderDisplay { get; set; } // 加载器版本
+        public string Details
+        {
+            get
+            {
+                if (TypeDisplay == "原版") return VersionDisplay ?? "";
+                string loaderInfo = $"{TypeDisplay} {LoaderDisplay}".Trim();
+                return string.IsNullOrEmpty(VersionDisplay) ? loaderInfo : $"{VersionDisplay}, {loaderInfo}";
+            }
+        }
+    }
+
     public partial class MainWindow : Window
     {
         // 绝对生效的手搓日志方法 
@@ -103,7 +122,9 @@ namespace MizuLauncher
         public ObservableCollection<string> DownloadableVanillaVersions { get; set; } = new();
         public ObservableCollection<ModInfo> ModSearchResults { get; set; } = new();
         public ObservableCollection<ModVersionInfo> ModVersions { get; set; } = new();
+        public ObservableCollection<VersionItemInfo> FilteredVersions { get; set; } = new();
         public ObservableCollection<DownloadTask> DownloadTasks { get; set; } = new();
+        private List<string> _allLocalVersions = new();
 
         public MainWindow()
         {
@@ -133,6 +154,7 @@ namespace MizuLauncher
                 ListModResults.ItemsSource = ModSearchResults;
                 ListModVersions.ItemsSource = ModVersions;
                 ListDownloadTasks.ItemsSource = DownloadTasks;
+                ListVersionsCenter.ItemsSource = FilteredVersions;
 
                 string mcDirPath = @"C:\Users\Mizusumi\Personal\play\mc\.minecraft";
                 _baseMcPath = new MinecraftPath(mcDirPath);
@@ -343,6 +365,80 @@ namespace MizuLauncher
             }
         }
 
+        private async Task<string> FlattenVersionJsonAsync(MinecraftLauncher launcher, string parentId, string moddedJson, string newId)
+        {
+            try
+            {
+                var moddedNode = JsonNode.Parse(moddedJson);
+                if (moddedNode == null) return moddedJson;
+
+                string? inheritsFrom = moddedNode["inheritsFrom"]?.ToString();
+                if (string.IsNullOrEmpty(inheritsFrom))
+                {
+                    moddedNode["id"] = newId;
+                    return moddedNode.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+                }
+
+                var parentVersion = await launcher.GetVersionAsync(inheritsFrom);
+                if (parentVersion == null) return moddedJson;
+
+                string parentJsonPath = Path.Combine(_baseMcPath?.Versions ?? "", inheritsFrom, $"{inheritsFrom}.json");
+                string parentJson;
+                if (File.Exists(parentJsonPath))
+                {
+                    parentJson = await File.ReadAllTextAsync(parentJsonPath);
+                }
+                else
+                {
+                    await launcher.InstallAsync(inheritsFrom);
+                    parentJson = await File.ReadAllTextAsync(parentJsonPath);
+                }
+
+                var parentNode = JsonNode.Parse(parentJson);
+                if (parentNode == null) return moddedJson;
+
+                var parentLibs = parentNode["libraries"]?.AsArray();
+                var moddedLibs = moddedNode["libraries"]?.AsArray();
+                if (parentLibs != null && moddedLibs != null)
+                {
+                    foreach (var lib in moddedLibs)
+                        parentLibs.Add(lib?.DeepClone());
+                }
+
+                var parentArgs = parentNode["arguments"];
+                var moddedArgs = moddedNode["arguments"];
+                if (parentArgs != null && moddedArgs != null)
+                {
+                    var parentGameArgs = parentArgs["game"]?.AsArray();
+                    var moddedGameArgs = moddedArgs["game"]?.AsArray();
+                    if (parentGameArgs != null && moddedGameArgs != null)
+                    {
+                        foreach (var arg in moddedGameArgs)
+                            parentGameArgs.Add(arg?.DeepClone());
+                    }
+
+                    var parentJvmArgs = parentArgs["jvm"]?.AsArray();
+                    var moddedJvmArgs = moddedArgs["jvm"]?.AsArray();
+                    if (parentJvmArgs != null && moddedJvmArgs != null)
+                    {
+                        foreach (var arg in moddedJvmArgs)
+                            parentJvmArgs.Add(arg?.DeepClone());
+                    }
+                }
+
+                parentNode["id"] = newId;
+                parentNode["mainClass"] = moddedNode["mainClass"]?.DeepClone() ?? parentNode["mainClass"]?.DeepClone();
+                if (parentNode["inheritsFrom"] != null)
+                    parentNode.AsObject().Remove("inheritsFrom");
+
+                return parentNode.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+            }
+            catch
+            {
+                return moddedJson;
+            }
+        }
+
         private async void BtnInstallVersion_Click(object sender, RoutedEventArgs e)
         {
             if (ListVanillaVersions.SelectedItem is not string mcVersion || _launcher == null) return;
@@ -376,13 +472,59 @@ namespace MizuLauncher
                         task.Status = "正在安装 Forge...";
                         var forgeInstaller = new CmlLib.Core.Installer.Forge.ForgeInstaller(_launcher);
                         await forgeInstaller.Install(mcVersion, loaderVersion);
+
+                        // 尝试打平 Forge 的 JSON，以避免产生冗余文件夹
+                        string versionName = $"{mcVersion}-forge-{loaderVersion}";
+                        string versionDir = Path.Combine(_baseMcPath?.Versions ?? "", versionName);
+                        string jsonPath = Path.Combine(versionDir, $"{versionName}.json");
+                        if (File.Exists(jsonPath))
+                        {
+                            string jsonContent = await File.ReadAllTextAsync(jsonPath);
+                            jsonContent = await FlattenVersionJsonAsync(_launcher, mcVersion, jsonContent, versionName);
+                            await File.WriteAllTextAsync(jsonPath, jsonContent);
+                        }
                     }
                     else if (RadioFabric.IsChecked == true && !string.IsNullOrEmpty(loaderVersion))
                     {
-                        task.Status = "正在安装 Fabric...";
-                        MessageBox.Show("Fabric 自动安装正在开发中，请使用 Vanilla 核心后手动放入加载器。");
-                        DownloadTasks.Remove(task);
-                        return;
+                        task.Status = "正在从 Fabric Meta 获取配置...";
+                        using var client = new System.Net.Http.HttpClient();
+                        string url = $"https://meta.fabricmc.net/v2/versions/loader/{mcVersion}/{loaderVersion}/profile/json";
+                        string jsonContent = await client.GetStringAsync(url);
+
+                        string versionName = $"{mcVersion}-fabric-{loaderVersion}";
+                         
+                         // 获取打平后的 JSON，避免产生冗余文件夹
+                         jsonContent = await FlattenVersionJsonAsync(_launcher, mcVersion, jsonContent, versionName);
+ 
+                         string versionDir = Path.Combine(_baseMcPath?.Versions ?? "", versionName);
+                        if (!Directory.Exists(versionDir)) Directory.CreateDirectory(versionDir);
+
+                        string jsonPath = Path.Combine(versionDir, $"{versionName}.json");
+                        await File.WriteAllTextAsync(jsonPath, jsonContent);
+
+                        task.Status = "正在安装 Fabric 依赖资源...";
+                        await _launcher.InstallAsync(versionName);
+                    }
+                    else if (RadioQuilt.IsChecked == true && !string.IsNullOrEmpty(loaderVersion))
+                    {
+                        task.Status = "正在从 Quilt Meta 获取配置...";
+                        using var client = new System.Net.Http.HttpClient();
+                        string url = $"https://meta.quiltmc.org/v2/versions/loader/{mcVersion}/{loaderVersion}/profile/json";
+                        string jsonContent = await client.GetStringAsync(url);
+
+                        string versionName = $"{mcVersion}-quilt-{loaderVersion}";
+                         
+                         // 获取打平后的 JSON，避免产生冗余文件夹
+                         jsonContent = await FlattenVersionJsonAsync(_launcher, mcVersion, jsonContent, versionName);
+ 
+                         string versionDir = Path.Combine(_baseMcPath?.Versions ?? "", versionName);
+                        if (!Directory.Exists(versionDir)) Directory.CreateDirectory(versionDir);
+
+                        string jsonPath = Path.Combine(versionDir, $"{versionName}.json");
+                        await File.WriteAllTextAsync(jsonPath, jsonContent);
+
+                        task.Status = "正在安装 Quilt 依赖资源...";
+                        await _launcher.InstallAsync(versionName);
                     }
                     else
                     {
@@ -496,13 +638,13 @@ namespace MizuLauncher
         {
             if (sender is Button btn && btn.DataContext is ModVersionInfo version)
             {
-                if (ListVersions.SelectedItem == null)
+                if (ListVersionsCenter.SelectedItem == null)
                 {
                     MessageBox.Show("请先在首页选定一个 Minecraft 版本，模组将下载到该版本的隔离文件夹中。");
                     return;
                 }
 
-                string selectedVersion = ListVersions.SelectedItem.ToString()!;
+                string selectedVersion = ListVersionsCenter.SelectedItem.ToString()!;
                 var task = new DownloadTask { Name = $"下载 Mod: {version.FileName}", Progress = 0, Status = "准备下载..." };
                 DownloadTasks.Add(task);
                 TabDownloadTasks.IsChecked = true;
@@ -555,9 +697,9 @@ namespace MizuLauncher
         private void BtnOpenModsFolder_Click(object sender, RoutedEventArgs e)
         {
             string modsPath;
-            if (ListVersions.SelectedItem != null)
+            if (ListVersionsCenter.SelectedItem != null)
             {
-                string selectedVersion = ListVersions.SelectedItem.ToString()!;
+                string selectedVersion = ListVersionsCenter.SelectedItem.ToString()!;
                 modsPath = Path.Combine(_baseMcPath?.BasePath ?? "", "versions", selectedVersion, "mods");
             }
             else
@@ -571,47 +713,12 @@ namespace MizuLauncher
 
         #endregion
 
-        private void TxtDeepSeekApiKey_PasswordChanged(object sender, RoutedEventArgs e)
-        {
-            if (sender is PasswordBox pb)
-            {
-                _deepSeekApiKey = pb.Password;
-                SaveConfig();
-            }
-        }
-
-        private void ComboDeepSeekModel_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (sender is ComboBox cb && cb.SelectedItem is ComboBoxItem item)
-            {
-                _deepSeekModel = item.Content.ToString() ?? "deepseek-chat";
-                SaveConfig();
-            }
-        }
-
-        private void TxtGlmApiKey_PasswordChanged(object sender, RoutedEventArgs e)
-        {
-            if (sender is PasswordBox pb)
-            {
-                _glmApiKey = pb.Password;
-                SaveConfig();
-            }
-        }
-
-        private void ComboGlmModel_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (sender is ComboBox cb && cb.SelectedItem is ComboBoxItem item)
-            {
-                _glmModel = item.Content.ToString() ?? "glm-4.7-flash";
-                SaveConfig();
-            }
-        }
-
         private void ComboAiProvider_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (sender is ComboBox cb && cb.SelectedItem is ComboBoxItem item)
             {
                 _aiProvider = item.Content.ToString() ?? "DeepSeek";
+                UpdateAiSettingsUI();
                 SaveConfig();
             }
         }
@@ -672,32 +779,15 @@ namespace MizuLauncher
             string userInput = TxtAIChatInput.Text.Trim();
             if (string.IsNullOrEmpty(userInput)) return;
 
-            string currentModelId;
-            string currentApiKey;
-            Uri currentEndpoint;
+            if (!_aiConfigs.TryGetValue(_aiProvider, out var config) || string.IsNullOrEmpty(config.ApiKey))
+            {
+                MessageBox.Show($"请先在“更多”页面设置 {_aiProvider} 的 API Key。");
+                return;
+            }
 
-            if (_aiProvider.Contains("GLM"))
-            {
-                if (string.IsNullOrEmpty(_glmApiKey))
-                {
-                    MessageBox.Show("请先在“更多”页面设置 GLM API Key。");
-                    return;
-                }
-                currentModelId = _glmModel;
-                currentApiKey = _glmApiKey;
-                currentEndpoint = new Uri("https://open.bigmodel.cn/api/paas/v4/");
-            }
-            else
-            {
-                if (string.IsNullOrEmpty(_deepSeekApiKey))
-                {
-                    MessageBox.Show("请先在“更多”页面设置 DeepSeek API Key。");
-                    return;
-                }
-                currentModelId = _deepSeekModel;
-                currentApiKey = _deepSeekApiKey;
-                currentEndpoint = new Uri("https://api.deepseek.com/v1");
-            }
+            string currentModelId = config.Model;
+            string currentApiKey = config.ApiKey;
+            Uri? currentEndpoint = !string.IsNullOrEmpty(config.BaseUrl) ? new Uri(config.BaseUrl) : null;
 
             EnsureAIOutputWindow();
             // 移除了这里的 ShowAtPosition，改为在完成后显示
@@ -707,7 +797,7 @@ namespace MizuLauncher
 
             try
             {
-                string selectedVersion = ListVersions.SelectedItem?.ToString() ?? "未选择";
+                string selectedVersion = ListVersionsCenter.SelectedItem?.ToString() ?? "未选择";
                 string systemPrompt = $@"你是一个专业的 Minecraft 启动器助手。
 当前用户选择的游戏版本是：{selectedVersion}。
 你的任务是帮助用户管理模组、解决问题，以及安装新的游戏版本、核心、光影包和材质包。
@@ -746,9 +836,16 @@ namespace MizuLauncher
 
 请始终确保下载的资源版本与用户当前选择的游戏版本（{selectedVersion}）兼容。";
 
-                var kernel = Kernel.CreateBuilder()
-                    .AddOpenAIChatCompletion(modelId: currentModelId, apiKey: currentApiKey, endpoint: currentEndpoint)
-                    .Build();
+                var builder = Kernel.CreateBuilder();
+                if (currentEndpoint != null)
+                {
+                    builder.AddOpenAIChatCompletion(modelId: currentModelId, apiKey: currentApiKey, endpoint: currentEndpoint);
+                }
+                else
+                {
+                    builder.AddOpenAIChatCompletion(modelId: currentModelId, apiKey: currentApiKey);
+                }
+                var kernel = builder.Build();
 
                 kernel.Plugins.AddFromObject(new MinecraftResourcePlugin(this));
 
@@ -849,27 +946,31 @@ namespace MizuLauncher
 
         #endregion
 
-        private void RefreshVersionList()
+        private async void RefreshVersionList()
         {
             try
             {
-                if (_baseMcPath == null) return;
-                ListVersions.Items.Clear();
-                string versionsDir = _baseMcPath.Versions;
-                if (Directory.Exists(versionsDir))
+                if (_launcher == null) return;
+                
+                var versions = await _launcher.GetAllVersionsAsync();
+                
+                _allLocalVersions.Clear();
+                foreach (var v in versions)
                 {
-                    string[] localVersionDirs = Directory.GetDirectories(versionsDir);
-                    foreach (string dir in localVersionDirs)
+                    // CmlLib.Core 4.0 中，判断本地版本通常通过检查其 ID 对应的文件夹是否存在
+                    string versionPath = Path.Combine(_baseMcPath!.Versions, v.Name, $"{v.Name}.json");
+                    if (File.Exists(versionPath))
                     {
-                        string versionName = Path.GetFileName(dir);
-                        ListVersions.Items.Add(versionName);
+                        _allLocalVersions.Add(v.Name);
                     }
                 }
 
-                if (ListVersions.Items.Count > 0)
+                FilterVersionList();
+                
+                if (FilteredVersions.Count > 0)
                 {
-                    ListVersions.SelectedIndex = 0;
-                    TxtCurrentVersion.Text = ListVersions.SelectedItem?.ToString() ?? "未选择版本";
+                    ListVersionsCenter.SelectedIndex = 0;
+                    TxtCurrentVersion.Text = FilteredVersions[0].Name ?? "未选择版本";
                     BtnLaunch.IsEnabled = true;
                 }
                 else
@@ -884,72 +985,146 @@ namespace MizuLauncher
             }
         }
 
-        private void ListVersions_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private async void FilterVersionList()
         {
-            if (ListVersions.SelectedItem != null)
+            if (_launcher == null) return;
+            string filter = TxtVersionSearch?.Text.Trim().ToLower() ?? "";
+            FilteredVersions.Clear();
+
+            // 为了获取详细信息，我们需要加载 MVersion 对象
+            foreach (var vName in _allLocalVersions)
             {
-                TxtCurrentVersion.Text = ListVersions.SelectedItem.ToString();
-                HideVersionOverlay();
+                if (string.IsNullOrEmpty(filter) || vName.ToLower().Contains(filter))
+                {
+                    try
+                    {
+                        var v = await _launcher.GetVersionAsync(vName);
+                        
+                        string icon = "vanilla.png";
+                        string type = "原版";
+                        
+                        // 提取纯粹的 MC 版本号 (例如从 1.21-fabric-xxx 中提取 1.21)
+                        string mcVersion = v.InheritsFrom ?? v.Id ?? "";
+                        var mcMatch = System.Text.RegularExpressions.Regex.Match(mcVersion, @"^\d+\.\d+(\.\d+)?");
+                        if (mcMatch.Success) mcVersion = mcMatch.Value;
+
+                        string loaderVersion = "";
+
+                        // 根据 mainClass 或其它属性判断加载器
+                        if (v.MainClass != null)
+                        {
+                            if (v.MainClass.Contains("fabric", StringComparison.OrdinalIgnoreCase))
+                            {
+                                type = "Fabric";
+                                icon = "fabric.png";
+                                // 尝试从 ID 获取加载器版本
+                                var match = System.Text.RegularExpressions.Regex.Match(v.Id ?? "", @"fabric-?(?:loader-)?(\d+\.\d+\.\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                                if (match.Success) loaderVersion = match.Groups[1].Value;
+                            }
+                            else if (v.MainClass.Contains("cpw.mods.bootstraplauncher.Main") || v.MainClass.Contains("net.minecraftforge.bootstrap.ForgeBootstrap"))
+                            {
+                                type = "Forge";
+                                icon = "forge.png";
+                                var match = System.Text.RegularExpressions.Regex.Match(v.Id ?? "", @"forge-?(\d+\.\d+\.\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                                if (match.Success) loaderVersion = match.Groups[1].Value;
+                            }
+                        }
+
+                        // 使用 URI 格式加载本地文件，确保 WPF 正确识别
+                        string iconFullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "res", "clienticon", icon);
+                        string iconUri = new Uri(iconFullPath).AbsoluteUri;
+
+                        FilteredVersions.Add(new VersionItemInfo 
+                        { 
+                            Name = vName, 
+                            IconPath = iconUri,
+                            TypeDisplay = type,
+                            VersionDisplay = mcVersion,
+                            LoaderDisplay = loaderVersion
+                        });
+                    }
+                    catch { /* 忽略无法解析的版本 */ }
+                }
+            }
+
+            // 更新搜索占位符
+            if (TxtVersionSearch != null)
+            {
+                TxtVersionSearch.Tag = $"在 {_allLocalVersions.Count} 个游戏中搜索";
+            }
+        }
+
+        private void TxtVersionSearch_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            FilterVersionList();
+        }
+
+        private void BtnRefreshVersionList_Click(object sender, RoutedEventArgs e)
+        {
+            RefreshVersionList();
+        }
+
+        private void ListVersionsCenter_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ListVersionsCenter.SelectedItem is VersionItemInfo item)
+            {
+                TxtCurrentVersion.Text = item.Name;
+                HideRow1VersionPanel();
                 BtnLaunch.IsEnabled = true;
             }
         }
 
-        private void BtnVersionSelect_MouseEnter(object sender, MouseEventArgs e)
+        private void BtnVersionSelect_Click(object sender, RoutedEventArgs e)
         {
-            ShowVersionOverlay();
+            ShowRow1VersionPanel();
         }
 
-        private void BtnVersionSelect_MouseLeave(object sender, MouseEventArgs e)
+        private void BtnCloseVersionCenter_Click(object sender, RoutedEventArgs e)
         {
-            if (!VersionListOverlay.IsMouseOver)
-            {
-                HideVersionOverlay();
-            }
+            HideRow1VersionPanel();
         }
 
-        private void PopupVersions_MouseEnter(object sender, MouseEventArgs e)
+        private void ShowRow1VersionPanel()
         {
-            ShowVersionOverlay();
-        }
+            if (Row1VersionPanel.Visibility == Visibility.Visible) return;
 
-        private void PopupVersions_MouseLeave(object sender, MouseEventArgs e)
-        {
-            if (!BtnVersionSelect.IsMouseOver)
-            {
-                HideVersionOverlay();
-            }
-        }
-
-        private void ShowVersionOverlay()
-        {
-            if (VersionListOverlay.Visibility == Visibility.Visible && VersionListOverlay.Opacity > 0.5) return;
-
-            VersionListOverlay.Visibility = Visibility.Visible;
+            Row1VersionPanel.Visibility = Visibility.Visible;
+            BtnCloseVersionCenter.Visibility = Visibility.Collapsed; // 隐藏旧位置按钮
             
-            DoubleAnimation fadeAnim = new DoubleAnimation(1, TimeSpan.FromMilliseconds(250));
-            DoubleAnimation slideAnim = new DoubleAnimation(0, TimeSpan.FromMilliseconds(350))
-            {
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-            };
+            Storyboard? slideUp = this.Resources["SlideUpAnimation"] as Storyboard;
+            slideUp?.Begin(Row1VersionPanel);
 
-            VersionListOverlay.BeginAnimation(OpacityProperty, fadeAnim);
-            VersionOverlayTransform.BeginAnimation(TranslateTransform.YProperty, slideAnim);
+            Storyboard? openMenu = this.Resources["OpenMenuAnimation"] as Storyboard;
+            openMenu?.Begin(this);
         }
 
-        private void HideVersionOverlay()
+        private void HideRow1VersionPanel()
         {
-            if (VersionListOverlay.Visibility == Visibility.Collapsed) return;
+            if (Row1VersionPanel.Visibility == Visibility.Collapsed) return;
 
-            DoubleAnimation fadeAnim = new DoubleAnimation(0, TimeSpan.FromMilliseconds(200));
-            DoubleAnimation slideAnim = new DoubleAnimation(30, TimeSpan.FromMilliseconds(250))
+            Storyboard? slideDown = this.Resources["SlideDownAnimation"] as Storyboard;
+            if (slideDown != null)
             {
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
-            };
+                slideDown = slideDown.Clone();
+                slideDown.Completed += (s, e) => Row1VersionPanel.Visibility = Visibility.Collapsed;
+                slideDown.Begin(Row1VersionPanel);
+            }
+            else
+            {
+                Row1VersionPanel.Visibility = Visibility.Collapsed;
+            }
 
-            fadeAnim.Completed += (s, e) => VersionListOverlay.Visibility = Visibility.Collapsed;
-
-            VersionListOverlay.BeginAnimation(OpacityProperty, fadeAnim);
-            VersionOverlayTransform.BeginAnimation(TranslateTransform.YProperty, slideAnim);
+            Storyboard? closeMenu = this.Resources["CloseMenuAnimation"] as Storyboard;
+            if (closeMenu != null)
+            {
+                closeMenu = closeMenu.Clone();
+                closeMenu.Completed += (s, e) => BtnCloseVersionCenter.Visibility = Visibility.Collapsed;
+                closeMenu.Begin(this);
+            }
+            else
+            {
+                BtnCloseVersionCenter.Visibility = Visibility.Collapsed;
+            }
         }
 
         private void BtnPlayerCard_MouseEnter(object sender, MouseEventArgs e)
@@ -1015,17 +1190,23 @@ namespace MizuLauncher
         private int _currentBgType = 3; // Default Acrylic
         private string _currentCustomColor = "#FF1E1E1E";
         private string _currentPlayerName = "添加玩家";
-        private string _deepSeekApiKey = "";
-        private string _deepSeekModel = "deepseek-chat";
-        private string _glmApiKey = "";
-        private string _glmModel = "glm-4.7-flash";
-        private string _aiProvider = "DeepSeek";
         private bool _isTaskCompleted = false;
         private bool _fakeMicrosoftAccount = false;
 
+        private Dictionary<string, AiConfig> _aiConfigs = new()
+        {
+            { "OpenAI", new AiConfig { Provider = "OpenAI", BaseUrl = "https://api.openai.com/v1", Model = "gpt-4o" } },
+            { "DeepSeek", new AiConfig { Provider = "DeepSeek", BaseUrl = "https://api.deepseek.com/v1", Model = "deepseek-chat" } },
+            { "GLM (ZhipuAI)", new AiConfig { Provider = "GLM (ZhipuAI)", BaseUrl = "https://open.bigmodel.cn/api/paas/v4/", Model = "glm-4.7-flash" } },
+            { "Claude (Anthropic)", new AiConfig { Provider = "Claude (Anthropic)", BaseUrl = "https://api.anthropic.com/v1", Model = "claude-3-5-sonnet-20240620" } },
+            { "Gemini (Google)", new AiConfig { Provider = "Gemini (Google)", BaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai/", Model = "gemini-1.5-pro" } },
+            { "Moonshot (Kimi)", new AiConfig { Provider = "Moonshot (Kimi)", BaseUrl = "https://api.moonshot.cn/v1", Model = "moonshot-v1-8k" } },
+            { "Custom", new AiConfig { Provider = "Custom", BaseUrl = "", Model = "" } }
+        };
+        private string _aiProvider = "DeepSeek";
+
         private string ConfigExportDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "MizuLauncherAura_Configs");
-        private string GlmKeyPath => Path.Combine(ConfigExportDir, "glm_api_key.txt");
-        private string DeepSeekKeyPath => Path.Combine(ConfigExportDir, "deepseek_api_key.txt");
+        private string AiConfigsPath => Path.Combine(ConfigExportDir, "ai_configs.json");
 
         private void SaveConfig()
         {
@@ -1037,20 +1218,16 @@ namespace MizuLauncher
                     CustomColor = _currentCustomColor,
                     PlayerName = _currentPlayerName,
                     Players = OnlinePlayers.Concat(OfflinePlayers).ToList(),
-                    DeepSeekApiKey = _deepSeekApiKey,
-                    DeepSeekModel = _deepSeekModel,
-                    GlmApiKey = _glmApiKey,
-                    GlmModel = _glmModel,
+                    AiConfigs = _aiConfigs.Values.ToList(),
                     AiProvider = _aiProvider,
                     FakeMicrosoftAccount = _fakeMicrosoftAccount
                 };
-                string json = JsonSerializer.Serialize(config);
+                string json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(ConfigFileName, json);
 
-                // 实时同步 API Key 到配置文件夹根目录
+                // 实时同步 AI 配置到配置文件夹
                 Directory.CreateDirectory(ConfigExportDir);
-                if (!string.IsNullOrEmpty(_glmApiKey)) File.WriteAllText(GlmKeyPath, _glmApiKey);
-                if (!string.IsNullOrEmpty(_deepSeekApiKey)) File.WriteAllText(DeepSeekKeyPath, _deepSeekApiKey);
+                File.WriteAllText(AiConfigsPath, JsonSerializer.Serialize(_aiConfigs.Values.ToList(), new JsonSerializerOptions { WriteIndented = true }));
             }
             catch (Exception ex)
             {
@@ -1071,47 +1248,40 @@ namespace MizuLauncher
                         _currentBgType = config.BackgroundType;
                         _currentCustomColor = config.CustomColor ?? "#FF1E1E1E";
                         _currentPlayerName = config.PlayerName ?? "添加玩家";
-                        _deepSeekApiKey = config.DeepSeekApiKey ?? "";
-                        _deepSeekModel = config.DeepSeekModel ?? "deepseek-chat";
-                        _glmApiKey = config.GlmApiKey ?? "";
-                        _glmModel = config.GlmModel ?? "glm-4.7-flash";
                         _aiProvider = config.AiProvider ?? "DeepSeek";
                         _fakeMicrosoftAccount = config.FakeMicrosoftAccount;
 
+                        if (config.AiConfigs != null && config.AiConfigs.Count > 0)
+                        {
+                            foreach (var ai in config.AiConfigs)
+                            {
+                                if (!string.IsNullOrEmpty(ai.Provider))
+                                {
+                                    _aiConfigs[ai.Provider] = ai;
+                                }
+                            }
+                        }
+
                         ChkFakeMicrosoft.IsChecked = _fakeMicrosoftAccount;
 
-                        // 从桌面模拟 AppData 文件夹恢复 (优先级更高，模拟实时同步)
-                        if (File.Exists(GlmKeyPath)) _glmApiKey = File.ReadAllText(GlmKeyPath).Trim();
-                        if (File.Exists(DeepSeekKeyPath)) _deepSeekApiKey = File.ReadAllText(DeepSeekKeyPath).Trim();
-
-                        TxtDeepSeekApiKey.Password = _deepSeekApiKey;
-                        foreach (ComboBoxItem item in ComboDeepSeekModel.Items)
+                        // 尝试从同步文件恢复
+                        if (File.Exists(AiConfigsPath))
                         {
-                            if (item.Content.ToString() == _deepSeekModel)
+                            var syncedConfigs = JsonSerializer.Deserialize<List<AiConfig>>(File.ReadAllText(AiConfigsPath));
+                            if (syncedConfigs != null)
                             {
-                                ComboDeepSeekModel.SelectedItem = item;
-                                break;
+                                foreach (var ai in syncedConfigs)
+                                {
+                                    if (!string.IsNullOrEmpty(ai.Provider))
+                                    {
+                                        _aiConfigs[ai.Provider] = ai;
+                                    }
+                                }
                             }
                         }
 
-                        TxtGlmApiKey.Password = _glmApiKey;
-                        foreach (ComboBoxItem item in ComboGlmModel.Items)
-                        {
-                            if (item.Content.ToString() == _glmModel)
-                            {
-                                ComboGlmModel.SelectedItem = item;
-                                break;
-                            }
-                        }
-
-                        foreach (ComboBoxItem item in ComboAiProvider.Items)
-                        {
-                            if (item.Content.ToString() == _aiProvider)
-                            {
-                                ComboAiProvider.SelectedItem = item;
-                                break;
-                            }
-                        }
+                        // 更新 UI
+                        UpdateAiSettingsUI();
 
                         if (config.Players != null)
                         {
@@ -1140,6 +1310,63 @@ namespace MizuLauncher
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Load config error: {ex.Message}");
+            }
+        }
+
+        private void UpdateAiSettingsUI()
+        {
+            if (ComboAiProvider == null || TxtAiApiKey == null || TxtAiModel == null || TxtAiBaseUrl == null) return;
+
+            // 设置 ComboBox 选中项
+            foreach (ComboBoxItem item in ComboAiProvider.Items)
+            {
+                if (item.Content.ToString() == _aiProvider)
+                {
+                    ComboAiProvider.SelectedItem = item;
+                    break;
+                }
+            }
+
+            // 加载当前提供商的配置
+            if (_aiConfigs.TryGetValue(_aiProvider, out var config))
+            {
+                _isUpdatingAiUI = true;
+                TxtAiApiKey.Password = config.ApiKey;
+                TxtAiModel.Text = config.Model;
+                TxtAiBaseUrl.Text = config.BaseUrl;
+                _isUpdatingAiUI = false;
+            }
+        }
+
+        private bool _isUpdatingAiUI = false;
+
+        private void TxtAiApiKey_PasswordChanged(object sender, RoutedEventArgs e)
+        {
+            if (_isUpdatingAiUI) return;
+            if (sender is PasswordBox pb && _aiConfigs.TryGetValue(_aiProvider, out var config))
+            {
+                config.ApiKey = pb.Password;
+                SaveConfig();
+            }
+        }
+
+        private void TxtAiModel_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_isUpdatingAiUI) return;
+            if (sender is TextBox tb && _aiConfigs.TryGetValue(_aiProvider, out var config))
+            {
+                config.Model = tb.Text;
+                SaveConfig();
+            }
+        }
+
+        private void TxtAiBaseUrl_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_isUpdatingAiUI) return;
+            if (sender is TextBox tb && _aiConfigs.TryGetValue(_aiProvider, out var config))
+            {
+                config.BaseUrl = tb.Text;
+                SaveConfig();
             }
         }
 
@@ -1200,11 +1427,11 @@ namespace MizuLauncher
                 }
                 else if (_currentBgType == 3) // Acrylic Active
                 {
-                    targetColor = System.Windows.Media.Color.FromArgb(0x60, 0x00, 0x00, 0x00);
+                    targetColor = System.Windows.Media.Color.FromArgb(0x30, 0x00, 0x00, 0x00);
                 }
                 else // Mica (无论聚焦与否都保持云母遮罩色)
                 {
-                    targetColor = System.Windows.Media.Color.FromArgb(0x15, 0x00, 0x00, 0x00);
+                    targetColor = System.Windows.Media.Color.FromArgb(0x05, 0x00, 0x00, 0x00);
                 }
 
                 AnimateBgTint(targetColor);
@@ -1241,6 +1468,59 @@ namespace MizuLauncher
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmGetColorizationColor(out uint pcbColorization, out bool pfOpaqueBlend);
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        private class MEMORYSTATUSEX
+        {
+            public uint dwLength;
+            public uint dwMemoryLoad;
+            public ulong ullTotalPhys;
+            public ulong ullAvailPhys;
+            public ulong ullTotalPageFile;
+            public ulong ullAvailPageFile;
+            public ulong ullTotalVirtual;
+            public ulong ullAvailVirtual;
+            public ulong ullAvailExtendedVirtual;
+            public MEMORYSTATUSEX()
+            {
+                this.dwLength = (uint)Marshal.SizeOf(typeof(MEMORYSTATUSEX));
+            }
+        }
+
+        [return: MarshalAs(UnmanagedType.Bool)]
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern bool GlobalMemoryStatusEx([In, Out] MEMORYSTATUSEX lpBuffer);
+
+        private int GetRecommendedMemoryMb()
+        {
+            try
+            {
+                var memStatus = new MEMORYSTATUSEX();
+                if (GlobalMemoryStatusEx(memStatus))
+                {
+                    long availMb = (long)(memStatus.ullAvailPhys / (1024 * 1024));
+                    long totalMb = (long)(memStatus.ullTotalPhys / (1024 * 1024));
+
+                    // 自动分配逻辑：
+                    // 1. 优先保证系统留有足够运行空间
+                    // 2. 游戏内存分配原则：
+                    int recommended;
+                    if (availMb > 16384) recommended = 8192; // 剩余 16G 以上，分 8G
+                    else if (availMb > 8192) recommended = 4096; // 剩余 8G 以上，分 4G
+                    else if (availMb > 4096) recommended = 3072; // 剩余 4G 以上，分 3G
+                    else if (availMb > 2048) recommended = 2048; // 剩余 2G 以上，分 2G
+                    else recommended = (int)Math.Max(1024, availMb - 512); // 极低内存，留 512MB 给系统
+
+                    // 保护：不分配超过总内存 70% 的内存
+                    int maxSafe = (int)(totalMb * 0.7);
+                    recommended = Math.Min(recommended, maxSafe);
+                    
+                    return recommended;
+                }
+            }
+            catch { }
+            return 4096; // 默认回退 4GB
+        }
 
         private void UpdateSystemAccentColor()
         {
@@ -1536,6 +1816,14 @@ namespace MizuLauncher
             protected void OnPropertyChanged(string propertyName) => PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(propertyName));
         }
 
+        public class AiConfig
+        {
+            public string Provider { get; set; } = "";
+            public string ApiKey { get; set; } = "";
+            public string Model { get; set; } = "";
+            public string? BaseUrl { get; set; }
+        }
+
         public class LauncherConfig
         {
             public int BackgroundType { get; set; } = 3; // Default Acrylic
@@ -1543,10 +1831,7 @@ namespace MizuLauncher
             public string PlayerName { get; set; } = "添加玩家";
             public System.Collections.Generic.List<PlayerInfo>? Players { get; set; }
             public bool ShowDragHint { get; set; } = true;
-            public string? DeepSeekApiKey { get; set; }
-            public string? DeepSeekModel { get; set; }
-            public string? GlmApiKey { get; set; }
-            public string? GlmModel { get; set; }
+            public System.Collections.Generic.List<AiConfig>? AiConfigs { get; set; }
             public string? AiProvider { get; set; } = "DeepSeek";
             public bool FakeMicrosoftAccount { get; set; } = false;
         }
@@ -1643,11 +1928,12 @@ namespace MizuLauncher
                 var launchOption = new MLaunchOption
                 {
                     Path = isolatedPath,
-                    MaximumRamMb = 4096,
+                    MaximumRamMb = GetRecommendedMemoryMb(),
                     Session = session
                 };
 
-                TxtProgressStep.Text = "正在校验资源...";
+                WriteLog($"游戏启动内存分配: {launchOption.MaximumRamMb} MB");
+                TxtProgressStep.Text = $"正在校验资源 (内存分配: {launchOption.MaximumRamMb}MB)...";
                 var process = await currentLauncher.InstallAndBuildProcessAsync(versionName, launchOption);
 
                 _isTaskCompleted = true;
@@ -1679,9 +1965,9 @@ namespace MizuLauncher
                     return;
                 }
 
-                if (ListVersions.SelectedItem != null)
+                if (ListVersionsCenter.SelectedItem is VersionItemInfo item)
                 {
-                    LaunchGame(ListVersions.SelectedItem.ToString() ?? "");
+                    LaunchGame(item.Name ?? "");
                 }
                 else
                 {
@@ -1704,6 +1990,14 @@ namespace MizuLauncher
             else
             {
                 VersionSettingsPanel.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void BtnListLaunch_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.DataContext is VersionItemInfo item)
+            {
+                LaunchGame(item.Name ?? "");
             }
         }
 
@@ -1730,13 +2024,13 @@ namespace MizuLauncher
 
         private void BtnExportConfig_Click(object sender, RoutedEventArgs e)
         {
-            if (ListVersions.SelectedItem == null)
+            if (ListVersionsCenter.SelectedItem == null)
             {
                 MessageBox.Show("请先在左侧选择一个版本。");
                 return;
             }
 
-            string versionName = ListVersions.SelectedItem.ToString()!;
+            string versionName = ListVersionsCenter.SelectedItem.ToString()!;
             string optionsPath = Path.Combine(_baseMcPath!.BasePath, "versions", versionName, "options.txt");
 
             if (!File.Exists(optionsPath))
@@ -1756,13 +2050,10 @@ namespace MizuLauncher
                 var keybindLines = lines.Where(l => l.StartsWith("key_") || l.StartsWith("soundCategory_") || l.StartsWith("modelPart_")).ToList();
                 File.WriteAllLines(Path.Combine(exportSubDir, "keybinds.txt"), keybindLines);
 
-                // 2. 导出 API Keys 备份到该子文件夹
-                StringBuilder sb = new StringBuilder();
-                if (!string.IsNullOrEmpty(_deepSeekApiKey)) sb.AppendLine($"DeepSeekApiKey:{_deepSeekApiKey}");
-                if (!string.IsNullOrEmpty(_glmApiKey)) sb.AppendLine($"GlmApiKey:{_glmApiKey}");
-                File.WriteAllText(Path.Combine(exportSubDir, "apikeys.txt"), sb.ToString());
+                // 2. 导出 AI 配置备份到该子文件夹
+                File.WriteAllText(Path.Combine(exportSubDir, "ai_configs.json"), JsonSerializer.Serialize(_aiConfigs.Values.ToList(), new JsonSerializerOptions { WriteIndented = true }));
 
-                MessageBox.Show($"配置已导出！\n键位和 API Key 备份已保存至 Keybinds\\{versionName}_{timestamp}");
+                MessageBox.Show($"配置已导出！\n键位和 AI 配置备份已保存至 Keybinds\\{versionName}_{timestamp}");
                 RefreshSavedConfigs();
             }
             catch (Exception ex)
@@ -1774,7 +2065,7 @@ namespace MizuLauncher
 
         private void BtnImportConfig_Click(object sender, RoutedEventArgs e)
         {
-            if (ListVersions.SelectedItem == null)
+            if (ListVersionsCenter.SelectedItem == null)
             {
                 MessageBox.Show("请先在左侧选择一个版本。");
                 return;
@@ -1786,14 +2077,33 @@ namespace MizuLauncher
                 return;
             }
 
-            string versionName = ListVersions.SelectedItem.ToString()!;
+            string versionName = ListVersionsCenter.SelectedItem.ToString()!;
             string configName = ComboSavedConfigs.SelectedItem.ToString()!;
             string optionsPath = Path.Combine(_baseMcPath!.BasePath, "versions", versionName, "options.txt");
             string importDir = Path.Combine(ConfigExportDir, "Keybinds", configName);
 
             try
             {
-                // 1. 导入选中备份文件夹下的 API Keys (如果存在备份)
+                // 1. 导入选中备份文件夹下的 AI 配置 (如果存在备份)
+                string aiConfigsFile = Path.Combine(importDir, "ai_configs.json");
+                if (File.Exists(aiConfigsFile))
+                {
+                    var importedConfigs = JsonSerializer.Deserialize<List<AiConfig>>(File.ReadAllText(aiConfigsFile));
+                    if (importedConfigs != null)
+                    {
+                        foreach (var ai in importedConfigs)
+                        {
+                            if (!string.IsNullOrEmpty(ai.Provider))
+                            {
+                                _aiConfigs[ai.Provider] = ai;
+                            }
+                        }
+                    }
+                    UpdateAiSettingsUI();
+                    SaveConfig();
+                }
+                
+                // 兼容旧版本
                 string apiKeysFile = Path.Combine(importDir, "apikeys.txt");
                 if (File.Exists(apiKeysFile))
                 {
@@ -1805,19 +2115,18 @@ namespace MizuLauncher
                         {
                             string key = parts[0].Trim();
                             string value = parts[1].Trim();
-                            if (key == "DeepSeekApiKey") 
+                            if (key == "DeepSeekApiKey" && _aiConfigs.ContainsKey("DeepSeek")) 
                             {
-                                _deepSeekApiKey = value;
-                                TxtDeepSeekApiKey.Password = value;
+                                _aiConfigs["DeepSeek"].ApiKey = value;
                             }
-                            else if (key == "GlmApiKey") 
+                            else if (key == "GlmApiKey" && _aiConfigs.ContainsKey("GLM (ZhipuAI)")) 
                             {
-                                _glmApiKey = value;
-                                TxtGlmApiKey.Password = value;
+                                _aiConfigs["GLM (ZhipuAI)"].ApiKey = value;
                             }
                         }
                     }
-                    SaveConfig(); // 这也会自动更新根目录下的 api_key.txt
+                    UpdateAiSettingsUI();
+                    SaveConfig();
                 }
 
                 // 2. 导入选中备份文件夹下的键位配置

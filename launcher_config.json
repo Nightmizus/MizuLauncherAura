@@ -1,1 +1,53 @@
-{"BackgroundType":3,"CustomColor":"#FF1E1E1E","PlayerName":"Hakurei_Reimu","Players":[{"Name":"Hakurei_Reimu","IsOnline":false,"UUID":null,"AccessToken":null}],"ShowDragHint":true,"DeepSeekApiKey":"sk-b353247bf53842a4bdbf2ae1ffdf0fef","DeepSeekModel":"deepseek-chat","GlmApiKey":"","GlmModel":"glm-4.7-flash","AiProvider":"DeepSeek","FakeMicrosoftAccount":true}
+{
+  "BackgroundType": 3,
+  "CustomColor": "#FF1E1E1E",
+  "PlayerName": "\u6DFB\u52A0\u73A9\u5BB6",
+  "Players": [],
+  "ShowDragHint": true,
+  "AiConfigs": [
+    {
+      "Provider": "OpenAI",
+      "ApiKey": "",
+      "Model": "gpt-4o",
+      "BaseUrl": "https://api.openai.com/v1"
+    },
+    {
+      "Provider": "DeepSeek",
+      "ApiKey": "",
+      "Model": "deepseek-chat",
+      "BaseUrl": "https://api.deepseek.com/v1"
+    },
+    {
+      "Provider": "GLM (ZhipuAI)",
+      "ApiKey": "",
+      "Model": "glm-4.7-flash",
+      "BaseUrl": "https://open.bigmodel.cn/api/paas/v4/"
+    },
+    {
+      "Provider": "Claude (Anthropic)",
+      "ApiKey": "",
+      "Model": "claude-3-5-sonnet-20240620",
+      "BaseUrl": "https://api.anthropic.com/v1"
+    },
+    {
+      "Provider": "Gemini (Google)",
+      "ApiKey": "",
+      "Model": "gemini-1.5-pro",
+      "BaseUrl": "https://generativelanguage.googleapis.com/v1beta/openai/"
+    },
+    {
+      "Provider": "Moonshot (Kimi)",
+      "ApiKey": "",
+      "Model": "moonshot-v1-8k",
+      "BaseUrl": "https://api.moonshot.cn/v1"
+    },
+    {
+      "Provider": "Custom",
+      "ApiKey": "",
+      "Model": "",
+      "BaseUrl": ""
+    }
+  ],
+  "AiProvider": "DeepSeek",
+  "FakeMicrosoftAccount": false
+}

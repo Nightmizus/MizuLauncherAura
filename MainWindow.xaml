@@ -4,8 +4,8 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="MizuLauncher Aura" Height="450" Width="750"
-        MinHeight="450" MinWidth="750"
+        Title="MizuLauncher Aura" Height="500" Width="820"
+        MinHeight="500" MinWidth="820"
         WindowStartupLocation="CenterScreen"
         Background="Transparent"
         WindowStyle="None"
@@ -302,10 +302,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#15FFFFFF"/>
+                                <Setter TargetName="Bd" Property="Background" Value="#25FFFFFF"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#25FFFFFF"/>
+                                <Setter TargetName="Bd" Property="Background" Value="#35FFFFFF"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -412,7 +412,7 @@
             <Setter Property="Foreground" Value="Black"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="Padding" Value="12,6"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -437,6 +437,58 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Storyboard x:Key="SlideUpAnimation">
+            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                             From="500" To="0" Duration="0:0:0.4">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                             From="0" To="1" Duration="0:0:0.3"/>
+        </Storyboard>
+
+        <Storyboard x:Key="SlideDownAnimation">
+            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                             To="500" Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction>
+                    <CubicEase EasingMode="EaseIn"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                             To="0" Duration="0:0:0.2"/>
+        </Storyboard>
+
+        <Storyboard x:Key="OpenMenuAnimation">
+            <!-- 版本名称缩小并向左下角移动 -->
+            <DoubleAnimation Storyboard.TargetName="BtnVersionSelect" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[1].(TranslateTransform.Y)" To="50" Duration="0:0:0.4">
+                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="BtnVersionSelect" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="0.4" Duration="0:0:0.4">
+                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="BtnVersionSelect" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="0.4" Duration="0:0:0.4">
+                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="BtnVersionSelect" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2"/>
+            <DoubleAnimation Storyboard.TargetName="BtnCloseVersionCenter" Storyboard.TargetProperty="Opacity" From="0" To="1" BeginTime="0:0:0.2" Duration="0:0:0.2"/>
+        </Storyboard>
+
+        <Storyboard x:Key="CloseMenuAnimation">
+            <!-- 版本名称恢复 -->
+            <DoubleAnimation Storyboard.TargetName="BtnVersionSelect" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[1].(TranslateTransform.Y)" To="0" Duration="0:0:0.4">
+                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="BtnVersionSelect" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleX)" To="1" Duration="0:0:0.4">
+                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="BtnVersionSelect" Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(ScaleTransform.ScaleY)" To="1" Duration="0:0:0.4">
+                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="BtnVersionSelect" Storyboard.TargetProperty="Opacity" To="1" BeginTime="0:0:0.2" Duration="0:0:0.2"/>
+            <DoubleAnimation Storyboard.TargetName="BtnCloseVersionCenter" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2"/>
+        </Storyboard>
 
 
 
@@ -507,22 +559,82 @@
             </Setter>
         </Style>
 
-        <Style x:Key="VersionListItemStyle" TargetType="ListBoxItem">
-            <Setter Property="Padding" Value="12,12"/>
+        <Style x:Key="VersionLaunchButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#35FFFFFF"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Margin" Value="0,1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="20" BorderBrush="#20FFFFFF" BorderThickness="1" Width="40" Height="40">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="12" Opacity="0.2" ShadowDepth="2" Color="Black"/>
+                                </Border.Effect>
+                                <TextBlock Text="" FontFamily="Segoe MDL2 Assets" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="2,0,0,0"/>
+                            </Border>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#45FFFFFF"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#40FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#25FFFFFF"/>
+                                <Setter TargetName="Bd" Property="Effect">
+                                    <Setter.Value>
+                                        <DropShadowEffect BlurRadius="5" Opacity="0.1" ShadowDepth="1" Color="Black"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="VersionListItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="0,2"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
-                        <Border x:Name="Bd" Background="Transparent" CornerRadius="{StaticResource MainCornerRadius}" IsHitTestVisible="True">
-                            <ContentPresenter Margin="{TemplateBinding Padding}"/>
-                        </Border>
+                        <Grid>
+                            <Border x:Name="Bd" Background="Transparent" CornerRadius="8" IsHitTestVisible="True">
+                                <Grid Margin="{TemplateBinding Padding}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="40"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <!-- 游戏图标 -->
+                                    <Border Width="32" Height="32" VerticalAlignment="Center" HorizontalAlignment="Left">
+                                        <Image Source="{Binding IconPath}" 
+                                               Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                    </Border>
+                                    
+                                    <!-- 版本名称与详细信息 -->
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,10,0">
+                                        <TextBlock x:Name="TxtName" Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding Details}" FontSize="11" Foreground="#80FFFFFF" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                    
+                                    <!-- 操作按钮组 -->
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <Button Style="{StaticResource VersionLaunchButtonStyle}" Click="BtnListLaunch_Click"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#30FFFFFF"/>
-                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                <Setter TargetName="Bd" Property="Background" Value="#25FFFFFF"/>
+                                <Setter TargetName="TxtName" Property="Foreground" Value="White"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="#15FFFFFF"/>
@@ -537,7 +649,7 @@
     <Grid x:Name="MainRoot" Background="Transparent">
 
         <!-- 默认亚克力纯黑蒙层 -->
-        <Border x:Name="BgTint" Background="#60000000" IsHitTestVisible="False"/>
+        <Border x:Name="BgTint" Background="#05000000" IsHitTestVisible="False"/>
 
         <!-- 噪点蒙层 (Noise Overlay) -->
         <Rectangle x:Name="NoiseLayer" Fill="{StaticResource NoiseBrush}" IsHitTestVisible="False"/>
@@ -802,48 +914,91 @@
                                         </StackPanel>
                                     </StackPanel>
 
-                                    <TextBlock Text="默认 AI 模型" FontSize="13" Foreground="#B0FFFFFF" Margin="0,0,0,8"/>
+                                    <TextBlock Text="默认 AI 提供商" FontSize="13" Foreground="#B0FFFFFF" Margin="0,0,0,8"/>
                                     <ComboBox x:Name="ComboAiProvider" Height="38" SelectionChanged="ComboAiProvider_SelectionChanged">
+                                        <ComboBoxItem Content="OpenAI"/>
                                         <ComboBoxItem Content="DeepSeek" IsSelected="True"/>
                                         <ComboBoxItem Content="GLM (ZhipuAI)"/>
+                                        <ComboBoxItem Content="Claude (Anthropic)"/>
+                                        <ComboBoxItem Content="Gemini (Google)"/>
+                                        <ComboBoxItem Content="Moonshot (Kimi)"/>
+                                        <ComboBoxItem Content="Custom"/>
                                     </ComboBox>
                                 </StackPanel>
                             </Border>
 
-                            <!-- DeepSeek AI 设置 -->
+                            <!-- AI 助手详细设置 -->
                             <Border Background="{StaticResource CardBackground}" CornerRadius="12" Padding="20" Margin="0,0,0,15">
                                 <StackPanel>
-                                    <TextBlock Text="DeepSeek AI 设置" FontSize="18" FontWeight="Bold" Margin="0,0,0,20"/>
+                                    <TextBlock Text="AI 助手设置" FontSize="18" FontWeight="Bold" Margin="0,0,0,20"/>
                                     
                                     <TextBlock Text="API Key" FontSize="13" Foreground="#B0FFFFFF" Margin="0,0,0,8"/>
-                                    <PasswordBox x:Name="TxtDeepSeekApiKey" Height="38" Margin="0,0,0,20" PasswordChanged="TxtDeepSeekApiKey_PasswordChanged"/>
+                                    <PasswordBox x:Name="TxtAiApiKey" Height="38" Margin="0,0,0,20" PasswordChanged="TxtAiApiKey_PasswordChanged"/>
                                     
-                                    <TextBlock Text="模型选择" FontSize="13" Foreground="#B0FFFFFF" Margin="0,0,0,8"/>
-                                    <ComboBox x:Name="ComboDeepSeekModel" Height="38" SelectionChanged="ComboDeepSeekModel_SelectionChanged">
-                                        <ComboBoxItem Content="deepseek-chat" IsSelected="True"/>
-                                        <ComboBoxItem Content="deepseek-reasoner"/>
-                                    </ComboBox>
-                                </StackPanel>
-                            </Border>
+                                    <TextBlock Text="模型名称 (Model ID)" FontSize="13" Foreground="#B0FFFFFF" Margin="0,0,0,8"/>
+                                    <TextBox x:Name="TxtAiModel" Height="38" Margin="0,0,0,20" VerticalContentAlignment="Center" TextChanged="TxtAiModel_TextChanged"/>
 
-                            <!-- GLM AI 设置 -->
-                            <Border Background="{StaticResource CardBackground}" CornerRadius="12" Padding="20">
-                                <StackPanel>
-                                    <TextBlock Text="GLM AI 设置 (ZhipuAI)" FontSize="18" FontWeight="Bold" Margin="0,0,0,20"/>
+                                    <TextBlock Text="API 端点 (Base URL)" FontSize="13" Foreground="#B0FFFFFF" Margin="0,0,0,8"/>
+                                    <TextBox x:Name="TxtAiBaseUrl" Height="38" Margin="0,0,0,20" VerticalContentAlignment="Center" TextChanged="TxtAiBaseUrl_TextChanged"/>
                                     
-                                    <TextBlock Text="API Key (将同步至桌面)" FontSize="13" Foreground="#B0FFFFFF" Margin="0,0,0,8"/>
-                                    <PasswordBox x:Name="TxtGlmApiKey" Height="38" Margin="0,0,0,20" PasswordChanged="TxtGlmApiKey_PasswordChanged"/>
-                                    
-                                    <TextBlock Text="模型选择" FontSize="13" Foreground="#B0FFFFFF" Margin="0,0,0,8"/>
-                                    <ComboBox x:Name="ComboGlmModel" Height="38" SelectionChanged="ComboGlmModel_SelectionChanged">
-                                         <ComboBoxItem Content="glm-4-flash"/>
-                                         <ComboBoxItem Content="glm-4.7-flash" IsSelected="True"/>
-                                         <ComboBoxItem Content="glm-4-plus"/>
-                                     </ComboBox>
+                                    <TextBlock Text="* 更改将自动保存至当前选中的提供商配置中。" FontSize="11" Foreground="#80FFFFFF" FontStyle="Italic"/>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
                     </ScrollViewer>
+                </Grid>
+            </Grid>
+
+            <!-- 版本选择面板 (Overlay) -->
+            <Grid x:Name="Row1VersionPanel" Grid.Row="1" Grid.RowSpan="2" Visibility="Collapsed" Background="#FF1A1A1A" Margin="0,0,0,76">
+                <Grid.RenderTransform>
+                    <TranslateTransform x:Name="VersionPanelTransform" Y="500"/>
+                </Grid.RenderTransform>
+                <Grid Margin="30,20">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <ListBox Grid.Row="0" x:Name="ListVersionsCenter" Background="Transparent" BorderThickness="0"
+                             ItemContainerStyle="{StaticResource VersionListItemStyle}"
+                             SelectionChanged="ListVersionsCenter_SelectionChanged"
+                             Margin="0,0,0,10">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="2" VerticalAlignment="Top"/>
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.Template>
+                            <ControlTemplate TargetType="ListBox">
+                                <ScrollViewer Padding="0,5">
+                                    <ItemsPresenter/>
+                                </ScrollViewer>
+                            </ControlTemplate>
+                        </ListBox.Template>
+                    </ListBox>
+
+                    <!-- 底部控制栏 -->
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0">
+                        <!-- 关闭列表按钮 -->
+                        <Button x:Name="BtnCloseVersionCenter_Panel" Content="关闭列表" Style="{StaticResource PrimaryButtonStyle}" 
+                                Width="80" Height="36" Padding="12,0" Click="BtnCloseVersionCenter_Click" 
+                                Tag="8">
+                            <Button.Effect>
+                                <DropShadowEffect BlurRadius="15" Opacity="0.3" ShadowDepth="0"/>
+                            </Button.Effect>
+                        </Button>
+
+                        <!-- 版本搜索框 -->
+                        <Border x:Name="BorderVersionSearch_Panel" Background="{StaticResource CardBackground}" CornerRadius="10" 
+                                Height="36" Width="220" Margin="15,0,0,0"
+                                BorderBrush="{StaticResource VisibleBorderBrush}" BorderThickness="1">
+                            <Grid>
+                                <TextBlock Text="" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="12,0,0,0" Foreground="#80FFFFFF" IsHitTestVisible="False"/>
+                                <TextBox x:Name="TxtVersionSearch" Padding="32,0,10,0" Tag="搜索版本..." Background="Transparent" BorderThickness="0" VerticalContentAlignment="Center" TextChanged="TxtVersionSearch_TextChanged"/>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
                 </Grid>
             </Grid>
 
@@ -853,15 +1008,32 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 
-                <!-- 第一行：超大版本名称 -->
+                <!-- 第一行：超大版本名称 / 关闭列表按钮 -->
                 <Grid Grid.Row="0" Margin="0,0,0,12">
-                    <ToggleButton x:Name="BtnVersionSelect" Style="{StaticResource PlayerCardToggleStyle}" 
+                    <!-- 版本选择按钮 -->
+                    <Button x:Name="BtnVersionSelect" Style="{StaticResource BaseButtonStyle}" 
                                   Height="Auto" HorizontalAlignment="Left"
-                                  MouseEnter="BtnVersionSelect_MouseEnter"
-                                  MouseLeave="BtnVersionSelect_MouseLeave">
+                                  Tag="{StaticResource MainCornerRadius}"
+                                  Click="BtnVersionSelect_Click">
+                        <Button.RenderTransform>
+                            <TransformGroup>
+                                <ScaleTransform CenterX="0" CenterY="24"/>
+                                <TranslateTransform/>
+                            </TransformGroup>
+                        </Button.RenderTransform>
                         <TextBlock x:Name="TxtCurrentVersion" Text="未选择版本" FontSize="48" FontWeight="Bold" 
-                                   Foreground="White" TextTrimming="CharacterEllipsis" Margin="8,0"/>
-                    </ToggleButton>
+                                   Foreground="White" TextTrimming="CharacterEllipsis" Margin="12,0"/>
+                    </Button>
+
+                    <!-- 关闭列表按钮 (初始隐藏) -->
+                    <Button x:Name="BtnCloseVersionCenter" Content="关闭列表" Style="{StaticResource PrimaryButtonStyle}" 
+                            HorizontalAlignment="Left" VerticalAlignment="Center" Margin="8,0"
+                            Width="80" Height="36" Padding="12,0" Click="BtnCloseVersionCenter_Click" 
+                            Tag="8" Opacity="0" Visibility="Collapsed">
+                        <Button.Effect>
+                            <DropShadowEffect BlurRadius="15" Opacity="0.3" ShadowDepth="0"/>
+                        </Button.Effect>
+                    </Button>
                 </Grid>
 
                 <!-- 第二行：玩家信息与功能按钮对齐 -->
@@ -962,24 +1134,6 @@
                 </Grid>
             </Grid>
         </Grid>
-
-        <!-- 版本选择 Overlay -->
-        <Border x:Name="VersionListOverlay" 
-                Width="240" HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                Margin="20,0,0,152" Background="#FF1E1E1E" CornerRadius="12" 
-                BorderBrush="{StaticResource CardBorder}" BorderThickness="1" 
-                Visibility="Collapsed" Opacity="0"
-                MouseEnter="PopupVersions_MouseEnter"
-                MouseLeave="PopupVersions_MouseLeave">
-            <Border.RenderTransform>
-                <TranslateTransform x:Name="VersionOverlayTransform" Y="20"/>
-            </Border.RenderTransform>
-            <DockPanel Margin="5">
-                <ListBox x:Name="ListVersions" Background="Transparent" BorderThickness="0"
-                         ItemContainerStyle="{StaticResource VersionListItemStyle}"
-                         SelectionChanged="ListVersions_SelectionChanged"/>
-            </DockPanel>
-        </Border>
 
         <!-- 账号选择 Overlay -->
         <Border x:Name="PlayerListOverlay" 

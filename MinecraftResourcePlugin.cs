@@ -2,6 +2,7 @@ using Microsoft.SemanticKernel;
 using System.ComponentModel;
 using System.Net.Http;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.IO;
 using System;
 using System.Collections.Generic;
@@ -48,7 +49,7 @@ namespace MizuLauncher
         private async Task<string> ListLocalFilesAsync(string folderName, string searchPattern)
         {
             var selectedVersion = await _mainWindow.Dispatcher.InvokeAsync(() => 
-                _mainWindow.ListVersions.SelectedItem?.ToString());
+                _mainWindow.ListVersionsCenter.SelectedItem?.ToString());
 
             if (string.IsNullOrEmpty(selectedVersion))
             {
@@ -80,6 +81,96 @@ namespace MizuLauncher
             }
         }
 
+        private async Task<string> FlattenVersionJsonAsync(MinecraftLauncher launcher, string parentId, string moddedJson, string newId)
+        {
+            try
+            {
+                var moddedNode = JsonNode.Parse(moddedJson);
+                if (moddedNode == null) return moddedJson;
+
+                // 检查是否继承自纯净版
+                string? inheritsFrom = moddedNode["inheritsFrom"]?.ToString();
+                if (string.IsNullOrEmpty(inheritsFrom))
+                {
+                    moddedNode["id"] = newId;
+                    return moddedNode.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+                }
+
+                // 获取父版本（纯净版）的元数据
+                var parentVersion = await launcher.GetVersionAsync(inheritsFrom);
+                if (parentVersion == null) return moddedJson;
+
+                // 尝试读取父版本的本地 JSON 文件内容
+                string parentJsonPath = Path.Combine(_mainWindow.GetBaseMcPath()?.Versions ?? "", inheritsFrom, $"{inheritsFrom}.json");
+                string parentJson;
+                if (File.Exists(parentJsonPath))
+                {
+                    parentJson = await File.ReadAllTextAsync(parentJsonPath);
+                }
+                else
+                {
+                    // 如果本地没有，尝试从 Mojang 下载
+                    // CmlLib.Core 4.x 内部会处理这个，但我们需要 JSON 内容来合并
+                    // 这里我们通过重新安装父版本来确保它存在，或者直接从网络获取
+                    await launcher.InstallAsync(inheritsFrom);
+                    parentJson = await File.ReadAllTextAsync(parentJsonPath);
+                }
+
+                var parentNode = JsonNode.Parse(parentJson);
+                if (parentNode == null) return moddedJson;
+
+                // 开始合并：以父版本为基础，用加载器版本覆盖
+                // 1. 合并 Libraries
+                var parentLibs = parentNode["libraries"]?.AsArray();
+                var moddedLibs = moddedNode["libraries"]?.AsArray();
+                if (parentLibs != null && moddedLibs != null)
+                {
+                    foreach (var lib in moddedLibs)
+                    {
+                        parentLibs.Add(lib?.DeepClone());
+                    }
+                }
+
+                // 2. 合并 Arguments (如果是新版 JSON 格式)
+                var parentArgs = parentNode["arguments"];
+                var moddedArgs = moddedNode["arguments"];
+                if (parentArgs != null && moddedArgs != null)
+                {
+                    // 合并 game 参数
+                    var parentGameArgs = parentArgs["game"]?.AsArray();
+                    var moddedGameArgs = moddedArgs["game"]?.AsArray();
+                    if (parentGameArgs != null && moddedGameArgs != null)
+                    {
+                        foreach (var arg in moddedGameArgs)
+                            parentGameArgs.Add(arg?.DeepClone());
+                    }
+
+                    // 合并 jvm 参数
+                    var parentJvmArgs = parentArgs["jvm"]?.AsArray();
+                    var moddedJvmArgs = moddedArgs["jvm"]?.AsArray();
+                    if (parentJvmArgs != null && moddedJvmArgs != null)
+                    {
+                        foreach (var arg in moddedJvmArgs)
+                            parentJvmArgs.Add(arg?.DeepClone());
+                    }
+                }
+
+                // 3. 覆盖关键字段
+                parentNode["id"] = newId;
+                parentNode["mainClass"] = moddedNode["mainClass"]?.DeepClone() ?? parentNode["mainClass"]?.DeepClone();
+                
+                // 移除 inheritsFrom 以使其成为独立版本，避免 CmlLib 再次触发父版本下载
+                if (parentNode["inheritsFrom"] != null)
+                    parentNode.AsObject().Remove("inheritsFrom");
+
+                return parentNode.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+            }
+            catch
+            {
+                return moddedJson;
+            }
+        }
+
         [KernelFunction, Description("安装指定版本的 Quilt 加载器。")]
         public async Task<string> InstallQuiltAsync(
             [Description("Minecraft 版本号")] string mcVersion,
@@ -97,6 +188,10 @@ namespace MizuLauncher
                 string jsonContent = await _httpClient.GetStringAsync(url);
 
                 string versionName = $"{mcVersion}-quilt-{quiltVersion}";
+                
+                // 获取打平后的 JSON，避免产生冗余文件夹
+                jsonContent = await FlattenVersionJsonAsync(launcher, mcVersion, jsonContent, versionName);
+
                 string versionDir = Path.Combine(_mainWindow.GetBaseMcPath()?.Versions ?? "", versionName);
                 if (!Directory.Exists(versionDir)) Directory.CreateDirectory(versionDir);
 
@@ -142,6 +237,10 @@ namespace MizuLauncher
                 string jsonContent = await _httpClient.GetStringAsync(url);
 
                 string versionName = $"{mcVersion}-fabric-{fabricVersion}";
+                
+                // 获取打平后的 JSON，避免产生冗余文件夹
+                jsonContent = await FlattenVersionJsonAsync(launcher, mcVersion, jsonContent, versionName);
+
                 string versionDir = Path.Combine(_mainWindow.GetBaseMcPath()?.Versions ?? "", versionName);
                 if (!Directory.Exists(versionDir)) Directory.CreateDirectory(versionDir);
 
@@ -252,7 +351,7 @@ namespace MizuLauncher
             [Description("资源类型: mod, shader, resourcepack")] string type)
         {
             var selectedVersion = await _mainWindow.Dispatcher.InvokeAsync(() => 
-                _mainWindow.ListVersions.SelectedItem?.ToString());
+                _mainWindow.ListVersionsCenter.SelectedItem?.ToString());
 
             if (string.IsNullOrEmpty(selectedVersion))
             {
@@ -326,7 +425,7 @@ namespace MizuLauncher
             [Description("资源类型: mod, shader, resourcepack")] string type)
         {
             var selectedVersion = await _mainWindow.Dispatcher.InvokeAsync(() => 
-                _mainWindow.ListVersions.SelectedItem?.ToString());
+                _mainWindow.ListVersionsCenter.SelectedItem?.ToString());
 
             if (string.IsNullOrEmpty(selectedVersion))
             {
@@ -537,6 +636,17 @@ namespace MizuLauncher
                 _mainWindow.UpdateMainProgress("正在安装 Forge...", 0.5);
                 var forgeInstaller = new ForgeInstaller(launcher);
                 await forgeInstaller.Install(mcVersion, forgeVersion);
+
+                // 尝试打平 Forge 的 JSON，以避免产生冗余文件夹
+                string versionName = $"{mcVersion}-forge-{forgeVersion}";
+                string versionDir = Path.Combine(_mainWindow.GetBaseMcPath()?.Versions ?? "", versionName);
+                string jsonPath = Path.Combine(versionDir, $"{versionName}.json");
+                if (File.Exists(jsonPath))
+                {
+                    string jsonContent = await File.ReadAllTextAsync(jsonPath);
+                    jsonContent = await FlattenVersionJsonAsync(launcher, mcVersion, jsonContent, versionName);
+                    await File.WriteAllTextAsync(jsonPath, jsonContent);
+                }
 
                 CompleteTask(task);
                 return $"成功：Forge {mcVersion}-{forgeVersion} 已安装。";
