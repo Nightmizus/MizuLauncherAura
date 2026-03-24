@@ -178,20 +178,39 @@
                                               VerticalAlignment="Center" 
                                               HorizontalAlignment="Left" 
                                               IsHitTestVisible="false"/>
-                            <Popup x:Name="PART_Popup" AllowsTransparency="true" Grid.ColumnSpan="2" IsOpen="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" Margin="1" Placement="Bottom" PopupAnimation="Slide">
-                                <Border x:Name="dropDownBorder" Background="#F01E1E1E" CornerRadius="10" Margin="0,4,0,0" BorderBrush="#30FFFFFF" BorderThickness="1" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                            <Popup x:Name="PART_Popup" AllowsTransparency="true" Grid.ColumnSpan="2" IsOpen="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" Margin="1" Placement="Bottom" PopupAnimation="None">
+                                <Border x:Name="dropDownBorder" Background="#F01E1E1E" CornerRadius="10" Margin="0,4,0,0" BorderBrush="#30FFFFFF" BorderThickness="1" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" Opacity="0">
+                                    <Border.RenderTransform>
+                                        <TranslateTransform Y="-10"/>
+                                    </Border.RenderTransform>
                                     <ScrollViewer x:Name="DropDownScrollViewer" MaxHeight="300">
                                         <ItemsPresenter x:Name="ItemsPresenter" KeyboardNavigation.DirectionalNavigation="Contained" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
                                     </ScrollViewer>
                                 </Border>
                             </Popup>
                         </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsDropDownOpen" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="dropDownBorder" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2">
+                                                <DoubleAnimation.EasingFunction><QuarticEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="dropDownBorder" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" To="0" Duration="0:0:0.3">
+                                                <DoubleAnimation.EasingFunction><QuarticEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
 
-        <!-- 全局右键菜单样式，修复黑底黑字问题 -->
+        <!-- 全局右键菜单样式，统一标准并增加流畅动画 -->
         <Style TargetType="ContextMenu">
             <Setter Property="Background" Value="#F02A2A2A"/>
             <Setter Property="Foreground" Value="White"/>
@@ -201,12 +220,25 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ContextMenu">
-                        <Border Background="{TemplateBinding Background}"
+                        <Border x:Name="MenuBorder" 
+                                Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="10">
+                                CornerRadius="10"
+                                RenderTransformOrigin="0.5,0">
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <TranslateTransform Y="15"/>
+                                    <ScaleTransform ScaleX="0.92" ScaleY="0.92"/>
+                                </TransformGroup>
+                            </Border.RenderTransform>
                             <ItemsPresenter/>
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <EventTrigger RoutedEvent="ContextMenu.Opened">
+                                <BeginStoryboard Storyboard="{StaticResource MenuOpenAnimation}"/>
+                            </EventTrigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -227,15 +259,34 @@
                                     <ColumnDefinition Width="Auto" SharedSizeGroup="Shortcut"/>
                                 </Grid.ColumnDefinitions>
                                 <ContentPresenter x:Name="Icon" ContentSource="Icon" Margin="8,0" VerticalAlignment="Center"/>
-                                <ContentPresenter Grid.Column="1" ContentSource="Header" Margin="{TemplateBinding Padding}" VerticalAlignment="Center"/>
+                                <ContentPresenter x:Name="HeaderHost" Grid.Column="1" ContentSource="Header" Margin="{TemplateBinding Padding}" VerticalAlignment="Center">
+                                    <ContentPresenter.RenderTransform>
+                                        <TranslateTransform X="0"/>
+                                    </ContentPresenter.RenderTransform>
+                                </ContentPresenter>
                             </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#20FFFFFF"/>
-                            </Trigger>
                             <Trigger Property="IsHighlighted" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="#20FFFFFF"/>
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="HeaderHost" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" To="4" Duration="0:0:0.15">
+                                                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="HeaderHost" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" To="0" Duration="0:0:0.15">
+                                                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Foreground" Value="#60FFFFFF"/>
@@ -438,20 +489,44 @@
             </Setter>
         </Style>
 
+        <Storyboard x:Key="MenuOpenAnimation">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.25">
+                <DoubleAnimation.EasingFunction><QuarticEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(TranslateTransform.Y)" From="15" To="0" Duration="0:0:0.35">
+                <DoubleAnimation.EasingFunction><QuarticEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[1].(ScaleTransform.ScaleX)" From="0.92" To="1" Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.2"/></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[1].(ScaleTransform.ScaleY)" From="0.92" To="1" Duration="0:0:0.3">
+                <DoubleAnimation.EasingFunction><BackEase EasingMode="EaseOut" Amplitude="0.2"/></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+
+        <Storyboard x:Key="MenuCloseAnimation">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2">
+                <DoubleAnimation.EasingFunction><QuarticEase EasingMode="EaseIn"/></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TransformGroup.Children)[0].(TranslateTransform.Y)" To="10" Duration="0:0:0.25">
+                <DoubleAnimation.EasingFunction><QuarticEase EasingMode="EaseIn"/></DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+
         <Storyboard x:Key="SlideUpAnimation">
             <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
-                             From="500" To="0" Duration="0:0:0.4">
+                             From="40" To="0" Duration="0:0:0.35">
                 <DoubleAnimation.EasingFunction>
                     <CubicEase EasingMode="EaseOut"/>
                 </DoubleAnimation.EasingFunction>
             </DoubleAnimation>
             <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                             From="0" To="1" Duration="0:0:0.3"/>
+                             From="0" To="1" Duration="0:0:0.25"/>
         </Storyboard>
 
         <Storyboard x:Key="SlideDownAnimation">
             <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
-                             To="500" Duration="0:0:0.3">
+                             To="20" Duration="0:0:0.25">
                 <DoubleAnimation.EasingFunction>
                     <CubicEase EasingMode="EaseIn"/>
                 </DoubleAnimation.EasingFunction>
@@ -472,7 +547,24 @@
                 <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
             </DoubleAnimation>
             <DoubleAnimation Storyboard.TargetName="BtnVersionSelect" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2"/>
-            <DoubleAnimation Storyboard.TargetName="BtnCloseVersionCenter" Storyboard.TargetProperty="Opacity" From="0" To="1" BeginTime="0:0:0.2" Duration="0:0:0.2"/>
+            
+            <DoubleAnimation Storyboard.TargetName="BtnBackHome" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" To="0" Duration="0:0:0.4">
+                 <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+             </DoubleAnimation>
+             <DoubleAnimation Storyboard.TargetName="BtnBackHome" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2"/>
+             <ObjectAnimationUsingKeyFrames Storyboard.TargetName="BtnBackHome" Storyboard.TargetProperty="Visibility">
+                 <DiscreteObjectKeyFrame KeyTime="0:0:0" Value="{x:Static Visibility.Visible}"/>
+             </ObjectAnimationUsingKeyFrames>
+             <ObjectAnimationUsingKeyFrames Storyboard.TargetName="BtnBackHome" Storyboard.TargetProperty="IsHitTestVisible">
+                 <DiscreteObjectKeyFrame KeyTime="0:0:0">
+                     <DiscreteObjectKeyFrame.Value>
+                         <system:Boolean xmlns:system="clr-namespace:System;assembly=mscorlib">True</system:Boolean>
+                     </DiscreteObjectKeyFrame.Value>
+                 </DiscreteObjectKeyFrame>
+             </ObjectAnimationUsingKeyFrames>
+             <DoubleAnimation Storyboard.TargetName="TxtMainTitle" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" To="36" Duration="0:0:0.4">
+                 <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+             </DoubleAnimation>
         </Storyboard>
 
         <Storyboard x:Key="CloseMenuAnimation">
@@ -487,21 +579,39 @@
                 <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
             </DoubleAnimation>
             <DoubleAnimation Storyboard.TargetName="BtnVersionSelect" Storyboard.TargetProperty="Opacity" To="1" BeginTime="0:0:0.2" Duration="0:0:0.2"/>
-            <DoubleAnimation Storyboard.TargetName="BtnCloseVersionCenter" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2"/>
+            
+            <DoubleAnimation Storyboard.TargetName="BtnBackHome" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" To="-20" Duration="0:0:0.4">
+                 <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+             </DoubleAnimation>
+             <DoubleAnimation Storyboard.TargetName="BtnBackHome" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2"/>
+             <ObjectAnimationUsingKeyFrames Storyboard.TargetName="BtnBackHome" Storyboard.TargetProperty="Visibility" BeginTime="0:0:0.4">
+                 <DiscreteObjectKeyFrame KeyTime="0:0:0" Value="{x:Static Visibility.Collapsed}"/>
+             </ObjectAnimationUsingKeyFrames>
+             <ObjectAnimationUsingKeyFrames Storyboard.TargetName="BtnBackHome" Storyboard.TargetProperty="IsHitTestVisible">
+                 <DiscreteObjectKeyFrame KeyTime="0:0:0">
+                     <DiscreteObjectKeyFrame.Value>
+                         <system:Boolean xmlns:system="clr-namespace:System;assembly=mscorlib">False</system:Boolean>
+                     </DiscreteObjectKeyFrame.Value>
+                 </DiscreteObjectKeyFrame>
+             </ObjectAnimationUsingKeyFrames>
+             <DoubleAnimation Storyboard.TargetName="TxtMainTitle" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.X)" To="0" Duration="0:0:0.4">
+                 <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+             </DoubleAnimation>
         </Storyboard>
 
 
 
         <Style x:Key="PlayerListItemStyle" TargetType="ListBoxItem">
-            <Setter Property="Padding" Value="8,6"/>
-            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Background" Value="#10FFFFFF"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
-                        <Border x:Name="Bd" Background="Transparent" CornerRadius="8" Margin="2">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="8" Margin="{TemplateBinding Margin}">
                             <Border.ContextMenu>
                                 <ContextMenu>
                                     <MenuItem Header="删除玩家" Click="DeletePlayer_Click"/>
@@ -509,14 +619,14 @@
                             </Border.ContextMenu>
                             <Grid Margin="{TemplateBinding Padding}">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="24"/>
+                                    <ColumnDefinition Width="32"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <Border Width="20" Height="20" Background="#30FFFFFF" CornerRadius="3">
+                                <Border Grid.Column="0" Width="30" Height="30" Background="Transparent" CornerRadius="0">
                                      <Image Source="{Binding Avatar}" 
-                                            Stretch="Fill" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+                                            Stretch="Uniform" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
                                  </Border>
-                                <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" Margin="10,0,0,0" FontSize="13"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" Margin="10,0,0,0" FontSize="14" FontWeight="Bold"/>
                             </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -647,31 +757,48 @@
     </Window.Resources>
 
     <Grid x:Name="MainRoot" Background="Transparent">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
         <!-- 默认亚克力纯黑蒙层 -->
-        <Border x:Name="BgTint" Background="#05000000" IsHitTestVisible="False"/>
+        <Border x:Name="BgTint" Grid.RowSpan="3" Background="#05000000" IsHitTestVisible="False"/>
 
         <!-- 噪点蒙层 (Noise Overlay) -->
-        <Rectangle x:Name="NoiseLayer" Fill="{StaticResource NoiseBrush}" IsHitTestVisible="False"/>
+        <Rectangle x:Name="NoiseLayer" Grid.RowSpan="3" Fill="{StaticResource NoiseBrush}" IsHitTestVisible="False"/>
 
-        <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-
-            <Grid Grid.Row="0" Margin="12,12,12,0">
+        <Grid Grid.Row="0" Margin="12,12,12,0" Panel.ZIndex="10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="220"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="MizuLauncher Aura" FontSize="16" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                <Grid Grid.Column="0">
+                    <!-- 返回按钮 -->
+                    <Button x:Name="BtnBackHome" Content="" FontFamily="Segoe MDL2 Assets" 
+                            Style="{StaticResource BaseButtonStyle}" Tag="6" 
+                            Width="32" Height="32" FontSize="14" Foreground="White"
+                            HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,0"
+                            Visibility="Collapsed" Opacity="0" IsHitTestVisible="False"
+                            WindowChrome.IsHitTestVisibleInChrome="True"
+                            Click="BtnBackHome_Click">
+                        <Button.RenderTransform>
+                            <TranslateTransform x:Name="BtnBackTransform" X="-20"/>
+                        </Button.RenderTransform>
+                    </Button>
+                    
+                    <!-- 主标题 -->
+                    <TextBlock x:Name="TxtMainTitle" Text="MizuLauncher Aura" FontSize="16" FontWeight="Bold" 
+                               HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,0" IsHitTestVisible="False">
+                        <TextBlock.RenderTransform>
+                            <TranslateTransform x:Name="TitleTransform" X="0"/>
+                        </TextBlock.RenderTransform>
+                    </TextBlock>
+                </Grid>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center" WindowChrome.IsHitTestVisibleInChrome="True">
-                    <RadioButton x:Name="BtnHome" Content="首页" Style="{StaticResource NavButtonStyle}" IsChecked="True" Click="BtnHome_Click" GroupName="NavGroup"/>
-                    <RadioButton x:Name="BtnDownload" Content="下载" Style="{StaticResource NavButtonStyle}" Margin="10,0,0,0" Click="BtnDownload_Click" GroupName="NavGroup"/>
-                    <RadioButton x:Name="BtnMore" Content="更多" Style="{StaticResource NavButtonStyle}" Margin="10,0,0,0" Click="BtnMore_Click" GroupName="NavGroup"/>
+                    <!-- 顶部按钮已移动到设置中心 -->
                 </StackPanel>
                 <StackPanel Grid.Column="2" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True" Margin="0,0,0,0" VerticalAlignment="Center">
                     <Button Content="" FontFamily="Segoe MDL2 Assets" Style="{StaticResource BaseButtonStyle}" Tag="8" Foreground="White" Width="40" Height="40" FontSize="10" Click="BtnMinimize_Click"/>
@@ -690,319 +817,13 @@
                     <!-- 原版本列表已移除 -->
                     <Border Grid.Column="0" Background="Transparent" Margin="0,0,6,0"/>
 
-                    <Border Grid.Column="1" Margin="6,0,0,0" Background="Transparent">
-                        <Grid>
-                            <!-- 版本设置面板 -->
-                            <Grid x:Name="VersionSettingsPanel" Visibility="Collapsed">
-                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Width="300">
-                                    <TextBlock Text="版本设置" FontSize="18" FontWeight="Bold" Margin="0,0,0,20" HorizontalAlignment="Center"/>
-                                    
-                                    <Button Content="导出键位配置" Style="{StaticResource BaseButtonStyle}" Height="40" Margin="0,0,0,10" Click="BtnExportConfig_Click" Tag="12"/>
-                                    
-                                    <Grid Margin="0,10,0,10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <ComboBox x:Name="ComboSavedConfigs" Height="40" Margin="0,0,10,0"/>
-                                        <Button Grid.Column="1" Content="导入" Style="{StaticResource BaseButtonStyle}" Width="80" Height="40" Click="BtnImportConfig_Click" Tag="12"/>
-                                    </Grid>
-                                    
-                                    <Button Content="返回" Style="{StaticResource BaseButtonStyle}" Height="35" Width="100" Margin="0,20,0,0" Click="BtnVersionSettings_Click" Tag="8"/>
-                                </StackPanel>
-                            </Grid>
-                        </Grid>
-                    </Border>
+                    <Border Grid.Column="1" Margin="6,0,0,0" Background="Transparent"/>
                 </Grid>
 
-                <!-- 下载页面内容 -->
-                <Grid x:Name="DownloadContent" Visibility="Collapsed">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-
-                    <StackPanel Orientation="Horizontal" Margin="10,0,10,15">
-                        <RadioButton x:Name="TabGameCore" Content="游戏核心" Style="{StaticResource NavButtonStyle}" IsChecked="True" GroupName="DownloadTab" Click="DownloadTab_Click"/>
-                        <RadioButton x:Name="TabModSearch" Content="模组搜索" Style="{StaticResource NavButtonStyle}" Margin="10,0,0,0" GroupName="DownloadTab" Click="DownloadTab_Click"/>
-                        <RadioButton x:Name="TabDownloadTasks" Content="下载任务" Style="{StaticResource NavButtonStyle}" Margin="10,0,0,0" GroupName="DownloadTab" Click="DownloadTab_Click"/>
-                    </StackPanel>
-
-                    <Grid Grid.Row="1">
-                        <!-- 游戏核心下载 -->
-                        <Grid x:Name="GameCorePanel" Visibility="Visible">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="200"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            
-                            <Border Background="{StaticResource CardBackground}" CornerRadius="12" Margin="0,0,10,0">
-                                <DockPanel>
-                                    <TextBlock Text="核心版本" DockPanel.Dock="Top" Margin="15,15,15,10" FontWeight="Bold" FontSize="16"/>
-                                    <Button x:Name="BtnRefreshVanilla" Content="刷新版本列表" DockPanel.Dock="Bottom" Margin="10" Style="{StaticResource BaseButtonStyle}" Height="35" Click="BtnRefreshVanilla_Click" Tag="12"/>
-                                    <ListBox x:Name="ListVanillaVersions" Background="Transparent" BorderThickness="0" Margin="5" ItemContainerStyle="{StaticResource VersionListItemStyle}" SelectionChanged="ListVanillaVersions_SelectionChanged"/>
-                                </DockPanel>
-                            </Border>
-
-                            <Border Grid.Column="1" Background="{StaticResource CardBackground}" CornerRadius="12">
-                                <Grid x:Name="VersionInstallPanel" Visibility="Collapsed">
-                                    <StackPanel Margin="20">
-                                        <TextBlock x:Name="TxtSelectedVersion" Text="选择一个版本" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
-                                        
-                                        <TextBlock Text="选择加载器" FontSize="14" Margin="0,0,0,10"/>
-                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                                            <RadioButton x:Name="RadioVanilla" Content="Vanilla" IsChecked="True" Foreground="White" Margin="0,0,15,0" Checked="LoaderRadio_Checked"/>
-                                            <RadioButton x:Name="RadioForge" Content="Forge" Foreground="White" Margin="0,0,15,0" Checked="LoaderRadio_Checked"/>
-                                            <RadioButton x:Name="RadioFabric" Content="Fabric" Foreground="White" Margin="0,0,15,0" Checked="LoaderRadio_Checked"/>
-                                            <RadioButton x:Name="RadioQuilt" Content="Quilt" Foreground="White" Checked="LoaderRadio_Checked"/>
-                                        </StackPanel>
-
-                                        <TextBlock x:Name="TxtLoaderVersionLabel" Text="加载器版本" FontSize="14" Margin="0,0,0,10" Visibility="Collapsed"/>
-                                        <ComboBox x:Name="ComboLoaderVersions" Height="35" Margin="0,0,0,20" Visibility="Collapsed"/>
-
-                                        <Button x:Name="BtnInstallVersion" Content="开始安装" Style="{StaticResource PrimaryButtonStyle}" Width="150" HorizontalAlignment="Left" Click="BtnInstallVersion_Click"/>
-                                    </StackPanel>
-                                </Grid>
-                            </Border>
-                        </Grid>
-
-                        <!-- 模组搜索 -->
-                        <Grid x:Name="ModSearchPanel" Visibility="Collapsed">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-
-                            <Grid x:Name="ModSearchHeader" Margin="0,0,0,15">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBox x:Name="TxtModSearchQuery" Height="38" Padding="15,0" Tag="搜索模组..."/>
-                                <ComboBox Grid.Column="1" x:Name="ComboModSource" Width="120" Height="38" Margin="10,0,0,0">
-                                    <ComboBoxItem Content="Modrinth" IsSelected="True"/>
-                                    <ComboBoxItem Content="CurseForge"/>
-                                </ComboBox>
-                                <Button Grid.Column="2" Content="搜索" Width="100" Height="38" Margin="10,0,0,0" Style="{StaticResource PrimaryButtonStyle}" Click="BtnModSearch_Click"/>
-                            </Grid>
-
-                            <!-- 搜索结果列表 -->
-                            <ListBox x:Name="ListModResults" Grid.Row="1" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource VersionListItemStyle}" Visibility="Visible">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid Margin="5">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="48"/>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Border Width="40" Height="40" Background="#30FFFFFF" CornerRadius="8">
-                                                <Image Source="{Binding IconUrl}" Stretch="UniformToFill"/>
-                                            </Border>
-                                            <StackPanel Grid.Column="1" Margin="15,0,0,0" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14"/>
-                                                <TextBlock Text="{Binding Author}" FontSize="12" Foreground="#80FFFFFF" Margin="0,2,0,0"/>
-                                            </StackPanel>
-                                            <Button Grid.Column="2" Content="查看版本" VerticalAlignment="Center" Padding="15,5" Style="{StaticResource BaseButtonStyle}" Click="BtnShowModVersions_Click" Tag="8"/>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-
-                            <!-- 模组版本列表 -->
-                            <Grid x:Name="ModVersionsPanel" Grid.Row="1" Visibility="Collapsed">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="*"/>
-                                </Grid.RowDefinitions>
-                                
-                                <Button Content="返回搜索结果" Style="{StaticResource BaseButtonStyle}" HorizontalAlignment="Left" Padding="10,5" Margin="0,0,0,10" Click="BtnBackToModSearch_Click" Tag="8"/>
-                                
-                                <ListBox x:Name="ListModVersions" Grid.Row="1" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource VersionListItemStyle}">
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <Grid Margin="5">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel>
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <TextBlock Text="{Binding VersionNumber}" FontWeight="Bold" FontSize="14"/>
-                                                        <Border Background="#30FFFFFF" CornerRadius="4" Margin="10,0,0,0" Padding="5,2">
-                                                            <TextBlock Text="{Binding DisplayType}" FontSize="10" VerticalAlignment="Center"/>
-                                                        </Border>
-                                                    </StackPanel>
-                                                    <TextBlock Text="{Binding DisplayGameVersions}" FontSize="12" Foreground="#80FFFFFF" Margin="0,5,0,0"/>
-                                                    <TextBlock Text="{Binding DisplayLoaders}" FontSize="12" Foreground="#50A2FF" FontWeight="SemiBold" Margin="0,2,0,0"/>
-                                                </StackPanel>
-                                                <Button Grid.Column="1" Content="下载" VerticalAlignment="Center" Padding="15,5" Style="{StaticResource BaseButtonStyle}" Click="BtnDownloadModVersion_Click" Tag="8"/>
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-                            </Grid>
-                        </Grid>
-
-                        <!-- 下载任务 -->
-                        <Grid x:Name="DownloadTasksPanel" Visibility="Collapsed">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-                            
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                <Button Content="清空已完成" Style="{StaticResource BaseButtonStyle}" Padding="15,5" Click="BtnClearCompleted_Click" Tag="8"/>
-                                <Button Content="打开模组文件夹" Style="{StaticResource BaseButtonStyle}" Margin="10,0,0,0" Padding="15,5" Click="BtnOpenModsFolder_Click" Tag="8"/>
-                            </StackPanel>
-
-                            <ListBox Grid.Row="1" x:Name="ListDownloadTasks" Background="Transparent" BorderThickness="0">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Background="#10FFFFFF" CornerRadius="8" Margin="0,0,0,10" Padding="15">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="100"/>
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel>
-                                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" Margin="0,0,0,5"/>
-                                                    <ProgressBar Value="{Binding Progress}" Height="4" Background="#20FFFFFF" Foreground="#FF00A2FF" BorderThickness="0"/>
-                                                </StackPanel>
-                                                <TextBlock Grid.Column="1" Text="{Binding Status}" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#80FFFFFF" FontSize="12"/>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                        </Grid>
-                    </Grid>
-                </Grid>
-
-                <!-- 更多页面内容 -->
-                <Grid x:Name="MoreContent" Visibility="Collapsed">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="20">
-                            <TextBlock Text="设置" FontSize="22" FontWeight="Bold" Margin="0,0,0,20"/>
-                            
-                            <!-- 个性化 -->
-                            <Border Background="{StaticResource CardBackground}" CornerRadius="12" Padding="20" Margin="0,0,0,15">
-                                <StackPanel>
-                                    <TextBlock Text="个性化" FontSize="18" FontWeight="Bold" Margin="0,0,0,20"/>
-
-                                    <CheckBox x:Name="ChkFakeMicrosoft" Content="假装有正版账号" Foreground="White" Margin="0,0,0,20" Click="ChkFakeMicrosoft_Click"/>
-
-                                    <TextBlock Text="背景效果" FontSize="13" Foreground="#B0FFFFFF" Margin="0,0,0,8"/>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                                        <RadioButton x:Name="RadioMica" Content="云母 (Mica)" Click="RadioBg_Click" Margin="0,0,20,0" Foreground="White"/>
-                                        <RadioButton x:Name="RadioAcrylic" Content="亚克力 (Acrylic)" Click="RadioBg_Click" Margin="0,0,20,0" Foreground="White"/>
-                                        <RadioButton x:Name="RadioButtonSolid" Content="纯色 (Solid)" Click="RadioBg_Click" Foreground="White"/>
-                                    </StackPanel>
-
-                                    <StackPanel x:Name="SolidColorSettings" Visibility="Collapsed">
-                                        <TextBlock Text="背景色选择" FontSize="13" Foreground="#B0FFFFFF" Margin="0,0,0,10"/>
-                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                            <Button Content="黑色" Click="ColorBtn_Click" Tag="#FF000000" Style="{StaticResource BaseButtonStyle}" Margin="0,0,5,0" Width="60" Height="30"/>
-                                            <Button Content="深灰" Click="ColorBtn_Click" Tag="#FF1E1E1E" Style="{StaticResource BaseButtonStyle}" Margin="0,0,5,0" Width="60" Height="30"/>
-                                            <Button Content="深蓝" Click="ColorBtn_Click" Tag="#FF001220" Style="{StaticResource BaseButtonStyle}" Margin="0,0,5,0" Width="60" Height="30"/>
-                                            <Button Content="深紫" Click="ColorBtn_Click" Tag="#FF120020" Style="{StaticResource BaseButtonStyle}" Margin="0,0,5,0" Width="60" Height="30"/>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
-                                            <TextBox x:Name="TxtCustomColor" Width="100" Height="35" VerticalContentAlignment="Center" Margin="0,0,10,0" Text="#FF1E1E1E"/>
-                                            <Button Content="应用" Click="ApplyCustomColor_Click" Style="{StaticResource BaseButtonStyle}" Width="80" Height="35"/>
-                                        </StackPanel>
-                                    </StackPanel>
-
-                                    <TextBlock Text="默认 AI 提供商" FontSize="13" Foreground="#B0FFFFFF" Margin="0,0,0,8"/>
-                                    <ComboBox x:Name="ComboAiProvider" Height="38" SelectionChanged="ComboAiProvider_SelectionChanged">
-                                        <ComboBoxItem Content="OpenAI"/>
-                                        <ComboBoxItem Content="DeepSeek" IsSelected="True"/>
-                                        <ComboBoxItem Content="GLM (ZhipuAI)"/>
-                                        <ComboBoxItem Content="Claude (Anthropic)"/>
-                                        <ComboBoxItem Content="Gemini (Google)"/>
-                                        <ComboBoxItem Content="Moonshot (Kimi)"/>
-                                        <ComboBoxItem Content="Custom"/>
-                                    </ComboBox>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- AI 助手详细设置 -->
-                            <Border Background="{StaticResource CardBackground}" CornerRadius="12" Padding="20" Margin="0,0,0,15">
-                                <StackPanel>
-                                    <TextBlock Text="AI 助手设置" FontSize="18" FontWeight="Bold" Margin="0,0,0,20"/>
-                                    
-                                    <TextBlock Text="API Key" FontSize="13" Foreground="#B0FFFFFF" Margin="0,0,0,8"/>
-                                    <PasswordBox x:Name="TxtAiApiKey" Height="38" Margin="0,0,0,20" PasswordChanged="TxtAiApiKey_PasswordChanged"/>
-                                    
-                                    <TextBlock Text="模型名称 (Model ID)" FontSize="13" Foreground="#B0FFFFFF" Margin="0,0,0,8"/>
-                                    <TextBox x:Name="TxtAiModel" Height="38" Margin="0,0,0,20" VerticalContentAlignment="Center" TextChanged="TxtAiModel_TextChanged"/>
-
-                                    <TextBlock Text="API 端点 (Base URL)" FontSize="13" Foreground="#B0FFFFFF" Margin="0,0,0,8"/>
-                                    <TextBox x:Name="TxtAiBaseUrl" Height="38" Margin="0,0,0,20" VerticalContentAlignment="Center" TextChanged="TxtAiBaseUrl_TextChanged"/>
-                                    
-                                    <TextBlock Text="* 更改将自动保存至当前选中的提供商配置中。" FontSize="11" Foreground="#80FFFFFF" FontStyle="Italic"/>
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
-                    </ScrollViewer>
-                </Grid>
+                <!-- 下载页面内容已集成到设置 -->
             </Grid>
 
-            <!-- 版本选择面板 (Overlay) -->
-            <Grid x:Name="Row1VersionPanel" Grid.Row="1" Grid.RowSpan="2" Visibility="Collapsed" Background="#FF1A1A1A" Margin="0,0,0,76">
-                <Grid.RenderTransform>
-                    <TranslateTransform x:Name="VersionPanelTransform" Y="500"/>
-                </Grid.RenderTransform>
-                <Grid Margin="30,20">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    
-                    <ListBox Grid.Row="0" x:Name="ListVersionsCenter" Background="Transparent" BorderThickness="0"
-                             ItemContainerStyle="{StaticResource VersionListItemStyle}"
-                             SelectionChanged="ListVersionsCenter_SelectionChanged"
-                             Margin="0,0,0,10">
-                        <ListBox.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <UniformGrid Columns="2" VerticalAlignment="Top"/>
-                            </ItemsPanelTemplate>
-                        </ListBox.ItemsPanel>
-                        <ListBox.Template>
-                            <ControlTemplate TargetType="ListBox">
-                                <ScrollViewer Padding="0,5">
-                                    <ItemsPresenter/>
-                                </ScrollViewer>
-                            </ControlTemplate>
-                        </ListBox.Template>
-                    </ListBox>
-
-                    <!-- 底部控制栏 -->
-                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0">
-                        <!-- 关闭列表按钮 -->
-                        <Button x:Name="BtnCloseVersionCenter_Panel" Content="关闭列表" Style="{StaticResource PrimaryButtonStyle}" 
-                                Width="80" Height="36" Padding="12,0" Click="BtnCloseVersionCenter_Click" 
-                                Tag="8">
-                            <Button.Effect>
-                                <DropShadowEffect BlurRadius="15" Opacity="0.3" ShadowDepth="0"/>
-                            </Button.Effect>
-                        </Button>
-
-                        <!-- 版本搜索框 -->
-                        <Border x:Name="BorderVersionSearch_Panel" Background="{StaticResource CardBackground}" CornerRadius="10" 
-                                Height="36" Width="220" Margin="15,0,0,0"
-                                BorderBrush="{StaticResource VisibleBorderBrush}" BorderThickness="1">
-                            <Grid>
-                                <TextBlock Text="" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="12,0,0,0" Foreground="#80FFFFFF" IsHitTestVisible="False"/>
-                                <TextBox x:Name="TxtVersionSearch" Padding="32,0,10,0" Tag="搜索版本..." Background="Transparent" BorderThickness="0" VerticalContentAlignment="Center" TextChanged="TxtVersionSearch_TextChanged"/>
-                            </Grid>
-                        </Border>
-                    </StackPanel>
-                </Grid>
-            </Grid>
-
-            <Grid Grid.Row="2" Margin="20,0,20,20">
+            <Grid Grid.Row="2" Margin="20,0,20,20" Panel.ZIndex="10">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -1024,16 +845,6 @@
                         <TextBlock x:Name="TxtCurrentVersion" Text="未选择版本" FontSize="48" FontWeight="Bold" 
                                    Foreground="White" TextTrimming="CharacterEllipsis" Margin="12,0"/>
                     </Button>
-
-                    <!-- 关闭列表按钮 (初始隐藏) -->
-                    <Button x:Name="BtnCloseVersionCenter" Content="关闭列表" Style="{StaticResource PrimaryButtonStyle}" 
-                            HorizontalAlignment="Left" VerticalAlignment="Center" Margin="8,0"
-                            Width="80" Height="36" Padding="12,0" Click="BtnCloseVersionCenter_Click" 
-                            Tag="8" Opacity="0" Visibility="Collapsed">
-                        <Button.Effect>
-                            <DropShadowEffect BlurRadius="15" Opacity="0.3" ShadowDepth="0"/>
-                        </Button.Effect>
-                    </Button>
                 </Grid>
 
                 <!-- 第二行：玩家信息与功能按钮对齐 -->
@@ -1048,16 +859,15 @@
                     <Grid Grid.Column="0" Margin="0,0,6,0">
                         <ToggleButton x:Name="BtnPlayerCard" Style="{StaticResource PlayerCardToggleStyle}" 
                                       VerticalAlignment="Center" Height="48"
-                                      MouseEnter="BtnPlayerCard_MouseEnter"
-                                      MouseLeave="BtnPlayerCard_MouseLeave">
+                                      Click="BtnPlayerCard_Click">
                             <Grid HorizontalAlignment="Stretch">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="32"/>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <Border Grid.Column="0" Width="30" Height="30" Background="#30FFFFFF" CornerRadius="4">
-                                    <Image x:Name="ImgPlayerAvatar" Stretch="Fill" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+                                <Border Grid.Column="0" Width="30" Height="30" Background="Transparent" CornerRadius="0">
+                                    <Image x:Name="ImgPlayerAvatar" Stretch="Uniform" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
                                 </Border>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="10,0,0,0">
                                     <TextBlock x:Name="TxtPlayerName" Text="添加玩家" FontSize="14" FontWeight="Bold" Foreground="White"/>
@@ -1133,34 +943,437 @@
                     </Button>
                 </Grid>
             </Grid>
+
+        <!-- 账号选择 Overlay (使用统一标准菜单样式) -->
+        <Grid x:Name="PlayerListOverlay" Grid.RowSpan="3" Visibility="Collapsed" Background="#F01E1E1E">
+            <Grid.RenderTransform>
+                <TranslateTransform Y="500"/>
+            </Grid.RenderTransform>
+            <Grid Margin="40,70,40,90">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="选择玩家" FontSize="20" FontWeight="Bold" Foreground="White" Margin="0,0,0,20"/>
+                
+                <StackPanel Grid.Row="1" Margin="0">
+                    <Button Content="+" FontSize="18" FontWeight="Bold" Style="{StaticResource BaseButtonStyle}" Foreground="#80FFFFFF" Height="35" Click="BtnAddPlayer_Click"/>
+                    
+                    <TextBlock x:Name="TxtOnlineHeader" Text="正版账号" Foreground="#60FFFFFF" FontSize="10" Margin="10,5,0,2"/>
+                    <ListBox x:Name="ListOnlinePlayers" Background="Transparent" BorderThickness="0" MaxHeight="150"
+                             ItemContainerStyle="{StaticResource PlayerListItemStyle}"
+                             SelectionChanged="ListPlayers_SelectionChanged"/>
+
+                    <Border x:Name="PlayerListSeparator" Background="#20FFFFFF" Height="1" Margin="10,5"/>
+
+                    <TextBlock x:Name="TxtOfflineHeader" Text="离线账号" Foreground="#60FFFFFF" FontSize="10" Margin="10,5,0,2"/>
+                    <ListBox x:Name="ListOfflinePlayers" Background="Transparent" BorderThickness="0" MaxHeight="250"
+                             ItemContainerStyle="{StaticResource PlayerListItemStyle}"
+                             SelectionChanged="ListPlayers_SelectionChanged"/>
+                </StackPanel>
+            </Grid>
         </Grid>
 
-        <!-- 账号选择 Overlay -->
-        <Border x:Name="PlayerListOverlay" 
-                Width="220" HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                Margin="20,0,0,80" Background="#FF1E1E1E" CornerRadius="12" 
-                BorderBrush="{StaticResource CardBorder}" BorderThickness="1" 
-                Visibility="Collapsed" Opacity="0"
-                MouseEnter="PopupPlayers_MouseEnter"
-                MouseLeave="PopupPlayers_MouseLeave">
-            <Border.RenderTransform>
-                <TranslateTransform x:Name="PlayerOverlayTransform" Y="20"/>
-            </Border.RenderTransform>
-            <StackPanel Margin="5">
-                <Button Content="+" FontSize="18" FontWeight="Bold" Style="{StaticResource BaseButtonStyle}" Foreground="#80FFFFFF" Height="35" Click="BtnAddPlayer_Click"/>
+        <!-- 版本设置 Overlay (两栏布局) -->
+        <Grid x:Name="VersionSettingsOverlay" Grid.RowSpan="3" Visibility="Collapsed" Background="#F01E1E1E">
+            <Grid.RenderTransform>
+                <TranslateTransform Y="500"/>
+            </Grid.RenderTransform>
+            <Grid Margin="40,70,40,90">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="160"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- 左侧类别栏 -->
+                <Border Background="#10FFFFFF" CornerRadius="12,0,0,12" BorderBrush="#20FFFFFF" BorderThickness="0,0,1,0">
+                    <DockPanel>
+                        <TextBlock Text="设置中心" DockPanel.Dock="Top" Margin="20,20,20,10" FontSize="18" FontWeight="Bold"/>
+                        <Button Content="关闭" DockPanel.Dock="Bottom" Style="{StaticResource BaseButtonStyle}" Height="35" Margin="10" Click="BtnVersionSettings_Click" Tag="8"/>
+                        <ListBox x:Name="ListSettingsCategories" Background="Transparent" BorderThickness="0" Margin="5" SelectionChanged="ListSettingsCategories_SelectionChanged">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="Foreground" Value="#A0FFFFFF"/>
+                                    <Setter Property="Padding" Value="15,10"/>
+                                    <Setter Property="Margin" Value="2"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="8">
+                                                    <ContentPresenter Margin="{TemplateBinding Padding}" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsSelected" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#25FFFFFF"/>
+                                                        <Setter Property="Foreground" Value="White"/>
+                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#15FFFFFF"/>
+                                                        <Setter Property="Foreground" Value="White"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsEnabled" Value="False">
+                                                        <Setter Property="Foreground" Value="#40FFFFFF"/>
+                                                        <Setter Property="Margin" Value="10,10,10,5"/>
+                                                        <Setter Property="FontSize" Value="11"/>
+                                                        <Setter Property="FontWeight" Value="Bold"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBoxItem Content="版本设置" IsEnabled="False"/>
+                            <ListBoxItem Content="当前版本" Tag="Version" IsSelected="True" Margin="5,0,5,2"/>
+                            
+                            <ListBoxItem Content="全局设置" IsEnabled="False" Margin="5,15,5,5"/>
+                            <ListBoxItem Content="通用设置" Tag="General" Margin="5,0,5,2"/>
+                            <ListBoxItem Content="AI 助手" Tag="AI" Margin="5,0,5,2"/>
+                            <ListBoxItem Content="下载中心" Tag="Download" Margin="5,0,5,2"/>
+                        </ListBox>
+                    </DockPanel>
+                </Border>
+
+                <!-- 右侧内容区 -->
+                <Grid Grid.Column="1" Margin="20">
+                    <!-- 版本设置内容 -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <Grid>
+                            <Grid x:Name="ContentVersionSettings" Visibility="Visible">
+                                <StackPanel>
+                                    <TextBlock Text="版本设置" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
+                                    <TextBlock Text="管理当前选定版本的键位与配置。" FontSize="13" Foreground="#80FFFFFF" Margin="0,0,0,20" TextWrapping="Wrap"/>
+                                    
+                                    <Button Content="导出当前版本键位配置" Style="{StaticResource PrimaryButtonStyle}" Height="40" Margin="0,0,0,15" Click="BtnExportConfig_Click"/>
+                                    
+                                    <TextBlock Text="快速导入已保存配置" FontSize="13" Foreground="#B0FFFFFF" Margin="0,10,0,8"/>
+                                    <Grid Margin="0,0,0,20">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox x:Name="ComboSavedConfigs" Height="38" Margin="0,0,10,0"/>
+                                        <Button Grid.Column="1" Content="导入" Style="{StaticResource BaseButtonStyle}" Width="80" Height="38" Click="BtnImportConfig_Click" Tag="12"/>
+                                    </Grid>
+
+                                    <TextBlock Text="游戏内存" FontSize="16" FontWeight="Bold" Margin="0,15,0,15"/>
+                                    
+                                    <StackPanel Margin="0,0,0,20">
+                                        <RadioButton x:Name="RadioAutoRam_Settings" Content="自动配置" GroupName="RamConfig" IsChecked="True" Foreground="White" Margin="0,0,0,12" Click="RadioAutoRam_Click"/>
+                                        
+                                        <Grid Margin="0,0,0,20">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="80"/>
+                                            </Grid.ColumnDefinitions>
+                                            <RadioButton x:Name="RadioCustomRam_Settings" Content="自定义" GroupName="RamConfig" Foreground="White" VerticalAlignment="Center" Click="RadioCustomRam_Click" Margin="0,0,15,0"/>
+                                            <Slider Grid.Column="1" x:Name="SliderRam_Settings" Minimum="512" Maximum="16384" SmallChange="128" LargeChange="1024" Value="2048" TickFrequency="512" IsSnapToTickEnabled="True" VerticalAlignment="Center" ValueChanged="SliderRam_ValueChanged" IsEnabled="False"/>
+                                            <TextBlock Grid.Column="2" x:Name="TxtRamValue_Settings" Text="2048 MB" TextAlignment="Right" VerticalAlignment="Center" Foreground="White"/>
+                                        </Grid>
+
+                                        <!-- Memory Status Bars -->
+                                        <Grid Margin="0,10,0,0">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            
+                                            <Grid Grid.Row="0" Margin="0,0,0,5">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="已使用内存" Foreground="#80FFFFFF" FontSize="12"/>
+                                                <TextBlock Grid.Column="1" Text="游戏分配" Foreground="#80FFFFFF" FontSize="12"/>
+                                            </Grid>
+
+                                            <!-- Progress Bar Container -->
+                                            <Grid x:Name="GridMemoryBars" Grid.Row="1" Height="6" Margin="0,0,0,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="50*"/>
+                                                    <ColumnDefinition Width="30*"/>
+                                                    <ColumnDefinition Width="20*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border x:Name="BorderUsedMemory" Grid.Column="0" Background="#A08C6E" CornerRadius="2,0,0,2"/>
+                                                <Border x:Name="BorderAllocatedMemory" Grid.Column="1" Background="#E0C9A3" Margin="2,0"/>
+                                                <Border Grid.Column="2" Background="#20FFFFFF" CornerRadius="0,2,2,0"/>
+                                            </Grid>
+
+                                            <Grid Grid.Row="2">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock x:Name="TxtUsedMemory" Text="0.0 GB / 0.0 GB" Foreground="White" FontSize="16"/>
+                                                <TextBlock x:Name="TxtAllocatedMemory" Grid.Column="1" Text="0.0 GB" Foreground="White" FontSize="16"/>
+                                            </Grid>
+                                        </Grid>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- 通用设置内容 -->
+                            <Grid x:Name="ContentGeneralSettings" Visibility="Collapsed">
+                                <StackPanel>
+                                    <TextBlock Text="通用设置" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
+                                    
+                                    <CheckBox x:Name="ChkFakeMicrosoft_Settings" Content="假装有正版账号" Foreground="White" Margin="0,0,0,15" Click="ChkFakeMicrosoft_Click"/>
+                                    <!-- 上面这个选项的名称不要给我改 -->
+                                    <TextBlock Text="背景效果" FontSize="13" Foreground="#B0FFFFFF" Margin="0,10,0,8"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                                        <RadioButton x:Name="RadioMica_Settings" Content="云母" Click="RadioBg_Click" Margin="0,0,15,0" Foreground="White"/>
+                                        <RadioButton x:Name="RadioAcrylic_Settings" Content="亚克力" Click="RadioBg_Click" Margin="0,0,15,0" Foreground="White"/>
+                                        <RadioButton x:Name="RadioButtonSolid_Settings" Content="纯色" Click="RadioBg_Click" Foreground="White"/>
+                                    </StackPanel>
+
+                                    <StackPanel x:Name="SolidColorSettings_Settings" Visibility="Collapsed">
+                                        <TextBlock Text="背景色选择" FontSize="12" Foreground="#80FFFFFF" Margin="0,0,0,8"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                            <Button Content="黑色" Click="ColorBtn_Click" Tag="#FF000000" Style="{StaticResource BaseButtonStyle}" Margin="0,0,5,0" Width="55" Height="28" FontSize="11"/>
+                                            <Button Content="深灰" Click="ColorBtn_Click" Tag="#FF1E1E1E" Style="{StaticResource BaseButtonStyle}" Margin="0,0,5,0" Width="55" Height="28" FontSize="11"/>
+                                            <Button Content="深蓝" Click="ColorBtn_Click" Tag="#FF001220" Style="{StaticResource BaseButtonStyle}" Margin="0,0,5,0" Width="55" Height="28" FontSize="11"/>
+                                            <Button Content="深紫" Click="ColorBtn_Click" Tag="#FF120020" Style="{StaticResource BaseButtonStyle}" Margin="0,0,5,0" Width="55" Height="28" FontSize="11"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBox x:Name="TxtCustomColor_Settings" Width="90" Height="32" VerticalContentAlignment="Center" Margin="0,0,8,0" Text="#FF1E1E1E" FontSize="12"/>
+                                            <Button Content="应用" Click="ApplyCustomColor_Click" Style="{StaticResource BaseButtonStyle}" Width="60" Height="32" FontSize="12"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- AI 助手内容 -->
+                            <Grid x:Name="ContentAISettings" Visibility="Collapsed">
+                                <StackPanel>
+                                    <TextBlock Text="AI 助手设置" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
+                                    
+                                    <TextBlock Text="默认 AI 提供商" FontSize="13" Foreground="#B0FFFFFF" Margin="0,0,0,8"/>
+                                    <ComboBox x:Name="ComboAiProvider_Settings" Height="38" Margin="0,0,0,15" SelectionChanged="ComboAiProvider_SelectionChanged">
+                                        <ComboBoxItem Content="OpenAI"/>
+                                        <ComboBoxItem Content="DeepSeek"/>
+                                        <ComboBoxItem Content="GLM (ZhipuAI)"/>
+                                        <ComboBoxItem Content="Claude (Anthropic)"/>
+                                        <ComboBoxItem Content="Gemini (Google)"/>
+                                        <ComboBoxItem Content="Moonshot (Kimi)"/>
+                                        <ComboBoxItem Content="Custom"/>
+                                    </ComboBox>
+
+                                    <TextBlock Text="API Key" FontSize="13" Foreground="#B0FFFFFF" Margin="0,0,0,8"/>
+                                    <PasswordBox x:Name="TxtAiApiKey_Settings" Height="38" Margin="0,0,0,15" PasswordChanged="TxtAiApiKey_PasswordChanged"/>
+                                    
+                                    <TextBlock Text="模型名称" FontSize="13" Foreground="#B0FFFFFF" Margin="0,0,0,8"/>
+                                    <TextBox x:Name="TxtAiModel_Settings" Height="38" Margin="0,0,0,15" VerticalContentAlignment="Center" TextChanged="TxtAiModel_TextChanged"/>
+
+                                    <TextBlock Text="API 端点 (Base URL)" FontSize="13" Foreground="#B0FFFFFF" Margin="0,0,0,8"/>
+                                    <TextBox x:Name="TxtAiBaseUrl_Settings" Height="38" Margin="0,0,0,15" VerticalContentAlignment="Center" TextChanged="TxtAiBaseUrl_TextChanged"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- 下载中心内容 -->
+                            <Grid x:Name="ContentDownloadSettings" Visibility="Collapsed">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                                    <RadioButton x:Name="TabGameCore_Settings" Content="游戏核心" Style="{StaticResource NavButtonStyle}" IsChecked="True" GroupName="DownloadTab_Settings" Click="DownloadTab_Click" Padding="12,6" FontSize="12"/>
+                                    <RadioButton x:Name="TabModSearch_Settings" Content="模组搜索" Style="{StaticResource NavButtonStyle}" Margin="8,0,0,0" GroupName="DownloadTab_Settings" Click="DownloadTab_Click" Padding="12,6" FontSize="12"/>
+                                    <RadioButton x:Name="TabDownloadTasks_Settings" Content="下载任务" Style="{StaticResource NavButtonStyle}" Margin="8,0,0,0" GroupName="DownloadTab_Settings" Click="DownloadTab_Click" Padding="12,6" FontSize="12"/>
+                                </StackPanel>
+
+                                <Grid Grid.Row="1">
+                                    <!-- 游戏核心下载 -->
+                                    <Grid x:Name="GameCorePanel_Settings" Visibility="Visible">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="140"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        
+                                        <Border Background="{StaticResource CardBackground}" CornerRadius="8" Margin="0,0,8,0">
+                                            <DockPanel>
+                                                <Button x:Name="BtnRefreshVanilla_Settings" Content="刷新" DockPanel.Dock="Bottom" Margin="5" Style="{StaticResource BaseButtonStyle}" Height="30" Click="BtnRefreshVanilla_Click" Tag="8" FontSize="11"/>
+                                                <ListBox x:Name="ListVanillaVersions_Settings" Background="Transparent" BorderThickness="0" Margin="2" ItemContainerStyle="{StaticResource VersionListItemStyle}" SelectionChanged="ListVanillaVersions_SelectionChanged"/>
+                                            </DockPanel>
+                                        </Border>
+
+                                        <Border Grid.Column="1" Background="{StaticResource CardBackground}" CornerRadius="8">
+                                            <Grid x:Name="VersionInstallPanel_Settings" Visibility="Collapsed">
+                                                <ScrollViewer>
+                                                    <StackPanel Margin="10">
+                                                        <TextBlock x:Name="TxtSelectedVersion_Settings" Text="选择一个版本" FontSize="16" FontWeight="Bold" Margin="0,0,0,10" TextTrimming="CharacterEllipsis"/>
+                                                        
+                                                        <TextBlock Text="加载器" FontSize="12" Margin="0,0,0,5"/>
+                                                        <WrapPanel Margin="0,0,0,10">
+                                                            <RadioButton x:Name="RadioVanilla_Settings_Download" Content="Vanilla" IsChecked="True" Foreground="White" Margin="0,0,10,5" Checked="LoaderRadio_Checked" FontSize="11"/>
+                                                            <RadioButton x:Name="RadioForge_Settings" Content="Forge" Foreground="White" Margin="0,0,10,5" Checked="LoaderRadio_Checked" FontSize="11"/>
+                                                            <RadioButton x:Name="RadioFabric_Settings_Download" Content="Fabric" Foreground="White" Margin="0,0,10,5" Checked="LoaderRadio_Checked" FontSize="11"/>
+                                                            <RadioButton x:Name="RadioQuilt_Settings_Download" Content="Quilt" Foreground="White" Checked="LoaderRadio_Checked" FontSize="11"/>
+                                                        </WrapPanel>
+
+                                                        <ComboBox x:Name="ComboLoaderVersions_Settings" Height="32" Margin="0,0,0,15" Visibility="Collapsed" FontSize="12"/>
+
+                                                        <Button x:Name="BtnInstallVersion_Settings" Content="开始安装" Style="{StaticResource PrimaryButtonStyle}" Height="35" Click="BtnInstallVersion_Click" FontSize="13"/>
+                                                    </StackPanel>
+                                                </ScrollViewer>
+                                            </Grid>
+                                        </Border>
+                                    </Grid>
+
+                                    <!-- 模组搜索 -->
+                                    <Grid x:Name="ModSearchPanel_Settings" Visibility="Collapsed">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="TxtModSearchQuery_Settings" Height="32" Padding="10,0" Tag="搜索模组..." FontSize="12"/>
+                                            <Button Grid.Column="1" Content="搜索" Width="60" Height="32" Margin="8,0,0,0" Style="{StaticResource PrimaryButtonStyle}" Click="BtnModSearch_Click" FontSize="12"/>
+                                        </Grid>
+
+                                        <!-- 搜索结果列表 -->
+                                        <ListBox x:Name="ListModResults_Settings" Grid.Row="1" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource VersionListItemStyle}">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="2">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="32"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <Border Width="28" Height="28" Background="#30FFFFFF" CornerRadius="4">
+                                                            <Image Source="{Binding IconUrl}" Stretch="UniformToFill"/>
+                                                        </Border>
+                                                        <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                                            <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                                                            <TextBlock Text="{Binding Author}" FontSize="10" Foreground="#80FFFFFF" TextTrimming="CharacterEllipsis"/>
+                                                        </StackPanel>
+                                                        <Button Grid.Column="2" Content="查看" VerticalAlignment="Center" Padding="8,2" Style="{StaticResource BaseButtonStyle}" Click="BtnShowModVersions_Click" Tag="6" FontSize="10"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+
+                                        <!-- 模组版本列表 -->
+                                        <Grid x:Name="ModVersionsPanel" Grid.Row="1" Visibility="Collapsed">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="*"/>
+                                            </Grid.RowDefinitions>
+                                            
+                                            <Button Content="返回搜索结果" Style="{StaticResource BaseButtonStyle}" HorizontalAlignment="Left" Padding="8,2" Margin="0,0,0,10" Click="BtnBackToModSearch_Click" Tag="6" FontSize="10"/>
+                                            
+                                            <ListBox x:Name="ListModVersions" Grid.Row="1" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource VersionListItemStyle}">
+                                                <ListBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Grid Margin="2">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel>
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <TextBlock Text="{Binding VersionNumber}" FontWeight="Bold" FontSize="12"/>
+                                                                    <Border Background="#30FFFFFF" CornerRadius="4" Margin="8,0,0,0" Padding="4,1">
+                                                                        <TextBlock Text="{Binding DisplayType}" FontSize="9" VerticalAlignment="Center"/>
+                                                                    </Border>
+                                                                </StackPanel>
+                                                                <TextBlock Text="{Binding DisplayGameVersions}" FontSize="10" Foreground="#80FFFFFF" Margin="0,2,0,0"/>
+                                                            </StackPanel>
+                                                            <Button Grid.Column="1" Content="下载" VerticalAlignment="Center" Padding="8,2" Style="{StaticResource BaseButtonStyle}" Click="BtnDownloadModVersion_Click" Tag="6" FontSize="10"/>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ListBox.ItemTemplate>
+                                            </ListBox>
+                                        </Grid>
+                                    </Grid>
+
+                                    <!-- 下载任务 -->
+                                    <Grid x:Name="DownloadTasksPanel_Settings" Visibility="Collapsed">
+                                        <ListBox x:Name="ListDownloadTasks_Settings" Background="Transparent" BorderThickness="0">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="#10FFFFFF" CornerRadius="6" Margin="0,0,0,8" Padding="10">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="80"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel>
+                                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="12" Margin="0,0,0,4" TextTrimming="CharacterEllipsis"/>
+                                                                <ProgressBar Value="{Binding Progress}" Height="3" Background="#20FFFFFF" Foreground="#FF00A2FF" BorderThickness="0"/>
+                                                            </StackPanel>
+                                                            <TextBlock Grid.Column="1" Text="{Binding Status}" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#80FFFFFF" FontSize="10"/>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </Grid>
+                                </Grid>
+                            </Grid>
+                        </Grid>
+                    </ScrollViewer>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <!-- 版本选择面板 (Overlay) -->
+        <Grid x:Name="Row1VersionPanel" Grid.RowSpan="3" Visibility="Collapsed" Background="#F01E1E1E">
+            <Grid.RenderTransform>
+                <TranslateTransform x:Name="VersionPanelTransform" Y="500"/>
+            </Grid.RenderTransform>
+            <Grid Margin="40,70,40,90">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="选择游戏版本" FontSize="20" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                    
+                    <!-- 版本搜索框 -->
+                    <Border x:Name="BorderVersionSearch_Panel" Grid.Column="1" HorizontalAlignment="Right" Background="{StaticResource CardBackground}" CornerRadius="10" 
+                            Height="40" Width="250"
+                            BorderBrush="{StaticResource VisibleBorderBrush}" BorderThickness="1">
+                        <Grid>
+                            <TextBlock Text="" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="12,0,0,0" Foreground="#80FFFFFF" IsHitTestVisible="False"/>
+                            <TextBox x:Name="TxtVersionSearch" Padding="35,0,10,0" Tag="搜索版本..." Background="Transparent" BorderThickness="0" VerticalContentAlignment="Center" TextChanged="TxtVersionSearch_TextChanged"/>
+                        </Grid>
+                    </Border>
+                </Grid>
                 
-                <TextBlock x:Name="TxtOnlineHeader" Text="正版账号" Foreground="#60FFFFFF" FontSize="10" Margin="10,5,0,2"/>
-                <ListBox x:Name="ListOnlinePlayers" Background="Transparent" BorderThickness="0" MaxHeight="150"
-                         ItemContainerStyle="{StaticResource PlayerListItemStyle}"
-                         SelectionChanged="ListPlayers_SelectionChanged"/>
-
-                <Border x:Name="PlayerListSeparator" Background="#20FFFFFF" Height="1" Margin="10,5"/>
-
-                <TextBlock x:Name="TxtOfflineHeader" Text="离线账号" Foreground="#60FFFFFF" FontSize="10" Margin="10,5,0,2"/>
-                <ListBox x:Name="ListOfflinePlayers" Background="Transparent" BorderThickness="0" MaxHeight="250"
-                         ItemContainerStyle="{StaticResource PlayerListItemStyle}"
-                         SelectionChanged="ListPlayers_SelectionChanged"/>
-            </StackPanel>
-        </Border>
+                <ListBox Grid.Row="1" x:Name="ListVersionsCenter" Background="Transparent" BorderThickness="0"
+                         ItemContainerStyle="{StaticResource VersionListItemStyle}"
+                         SelectionChanged="ListVersionsCenter_SelectionChanged">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="2" VerticalAlignment="Top"/>
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.Template>
+                        <ControlTemplate TargetType="ListBox">
+                            <ScrollViewer Padding="0,5">
+                                <ItemsPresenter/>
+                            </ScrollViewer>
+                        </ControlTemplate>
+                    </ListBox.Template>
+                </ListBox>
+            </Grid>
+        </Grid>
     </Grid>
 </Window>

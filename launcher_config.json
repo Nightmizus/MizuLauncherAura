@@ -1,8 +1,15 @@
 {
   "BackgroundType": 3,
   "CustomColor": "#FF1E1E1E",
-  "PlayerName": "\u6DFB\u52A0\u73A9\u5BB6",
-  "Players": [],
+  "PlayerName": "izwd",
+  "Players": [
+    {
+      "Name": "izwd",
+      "IsOnline": false,
+      "UUID": null,
+      "AccessToken": null
+    }
+  ],
   "ShowDragHint": true,
   "AiConfigs": [
     {
@@ -49,5 +56,7 @@
     }
   ],
   "AiProvider": "DeepSeek",
-  "FakeMicrosoftAccount": false
+  "FakeMicrosoftAccount": true,
+  "AutoRam": false,
+  "MaxRamMb": 6656
 }

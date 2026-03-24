@@ -48,7 +48,7 @@ namespace MizuLauncher
 
         private async Task<string> ListLocalFilesAsync(string folderName, string searchPattern)
         {
-            var selectedVersion = await _mainWindow.Dispatcher.InvokeAsync(() => 
+            var selectedVersion = await _mainWindow.Dispatcher.InvokeAsync(() =>
                 _mainWindow.ListVersionsCenter.SelectedItem?.ToString());
 
             if (string.IsNullOrEmpty(selectedVersion))
@@ -158,7 +158,7 @@ namespace MizuLauncher
                 // 3. 覆盖关键字段
                 parentNode["id"] = newId;
                 parentNode["mainClass"] = moddedNode["mainClass"]?.DeepClone() ?? parentNode["mainClass"]?.DeepClone();
-                
+
                 // 移除 inheritsFrom 以使其成为独立版本，避免 CmlLib 再次触发父版本下载
                 if (parentNode["inheritsFrom"] != null)
                     parentNode.AsObject().Remove("inheritsFrom");
@@ -188,7 +188,7 @@ namespace MizuLauncher
                 string jsonContent = await _httpClient.GetStringAsync(url);
 
                 string versionName = $"{mcVersion}-quilt-{quiltVersion}";
-                
+
                 // 获取打平后的 JSON，避免产生冗余文件夹
                 jsonContent = await FlattenVersionJsonAsync(launcher, mcVersion, jsonContent, versionName);
 
@@ -199,7 +199,7 @@ namespace MizuLauncher
                 await File.WriteAllTextAsync(jsonPath, jsonContent);
 
                 task.Status = "正在安装依赖资源...";
-                launcher.FileProgressChanged += (s, args) => 
+                launcher.FileProgressChanged += (s, args) =>
                 {
                     if (args.TotalTasks > 0)
                     {
@@ -237,7 +237,7 @@ namespace MizuLauncher
                 string jsonContent = await _httpClient.GetStringAsync(url);
 
                 string versionName = $"{mcVersion}-fabric-{fabricVersion}";
-                
+
                 // 获取打平后的 JSON，避免产生冗余文件夹
                 jsonContent = await FlattenVersionJsonAsync(launcher, mcVersion, jsonContent, versionName);
 
@@ -248,7 +248,7 @@ namespace MizuLauncher
                 await File.WriteAllTextAsync(jsonPath, jsonContent);
 
                 task.Status = "正在安装依赖资源...";
-                launcher.FileProgressChanged += (s, args) => 
+                launcher.FileProgressChanged += (s, args) =>
                 {
                     if (args.TotalTasks > 0)
                     {
@@ -312,7 +312,7 @@ namespace MizuLauncher
 
                 string facets = "[" + string.Join(",", facetList.Select(f => $"[{f}]")) + "]";
                 string url = $"https://api.modrinth.com/v2/search?query={Uri.EscapeDataString(query)}&facets={Uri.EscapeDataString(facets)}&limit=5";
-                
+
                 var response = await _httpClient.GetStringAsync(url);
                 return response;
             }
@@ -350,7 +350,7 @@ namespace MizuLauncher
             [Description("保存的文件名")] string fileName,
             [Description("资源类型: mod, shader, resourcepack")] string type)
         {
-            var selectedVersion = await _mainWindow.Dispatcher.InvokeAsync(() => 
+            var selectedVersion = await _mainWindow.Dispatcher.InvokeAsync(() =>
                 _mainWindow.ListVersionsCenter.SelectedItem?.ToString());
 
             if (string.IsNullOrEmpty(selectedVersion))
@@ -367,7 +367,7 @@ namespace MizuLauncher
             };
 
             var task = await CreateDownloadTask($"AI 下载 {type}: {fileName}");
-            
+
             try
             {
                 string path = Path.Combine(_mainWindow.GetBaseMcPath()?.BasePath ?? "", "versions", selectedVersion, folderName);
@@ -424,7 +424,7 @@ namespace MizuLauncher
             [Description("要删除的文件名（必须是完整的文件名，如 example-mod.jar）")] string fileName,
             [Description("资源类型: mod, shader, resourcepack")] string type)
         {
-            var selectedVersion = await _mainWindow.Dispatcher.InvokeAsync(() => 
+            var selectedVersion = await _mainWindow.Dispatcher.InvokeAsync(() =>
                 _mainWindow.ListVersionsCenter.SelectedItem?.ToString());
 
             if (string.IsNullOrEmpty(selectedVersion))
@@ -528,7 +528,7 @@ namespace MizuLauncher
         {
             var installedVersions = new HashSet<string>();
             var results = new List<string>();
-            
+
             async Task ProcessVersion(string vId)
             {
                 if (installedVersions.Contains(vId)) return;
@@ -598,7 +598,7 @@ namespace MizuLauncher
                 var launcher = _mainWindow.GetLauncher();
                 if (launcher == null) return "错误：启动器实例未初始化。";
 
-                launcher.FileProgressChanged += (s, args) => 
+                launcher.FileProgressChanged += (s, args) =>
                 {
                     if (args.TotalTasks > 0)
                     {
@@ -610,7 +610,7 @@ namespace MizuLauncher
                 };
 
                 await launcher.InstallAsync(mcVersion);
-                
+
                 CompleteTask(task);
                 return $"成功：Minecraft {mcVersion} 已安装。";
             }
@@ -767,7 +767,7 @@ namespace MizuLauncher
 
         private async Task<DownloadTask> CreateDownloadTask(string name)
         {
-            return await _mainWindow.Dispatcher.InvokeAsync(() => 
+            return await _mainWindow.Dispatcher.InvokeAsync(() =>
             {
                 var t = new DownloadTask { Name = name, Progress = 0, Status = "准备中..." };
                 _mainWindow.DownloadTasks.Add(t);
