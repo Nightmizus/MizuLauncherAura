@@ -2,14 +2,7 @@
   "BackgroundType": 3,
   "CustomColor": "#FF1E1E1E",
   "PlayerName": "Hakurei_Reimu",
-  "Players": [
-    {
-      "Name": "Hakurei_Reimu",
-      "IsOnline": false,
-      "UUID": null,
-      "AccessToken": null
-    }
-  ],
+  "Players": [],
   "ShowDragHint": true,
   "AiConfigs": [
     {

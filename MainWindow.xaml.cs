@@ -114,7 +114,6 @@ namespace MizuLauncher
 
         private MinecraftLauncher? _launcher;
         private MinecraftPath? _baseMcPath;
-        private AIOutputWindow? _aiOutputWindow;
         private const string ConfigFileName = "launcher_config.json";
 
         public ObservableCollection<PlayerInfo> OnlinePlayers { get; set; } = new();
@@ -827,6 +826,14 @@ namespace MizuLauncher
             });
         }
 
+        public void UpdateAIStatus(string status, double progress)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                TxtAIStatus.Text = status;
+            });
+        }
+
         private void BorderProgress_MouseDown(object sender, MouseButtonEventArgs e)
         {
             if (_isTaskCompleted)
@@ -834,6 +841,22 @@ namespace MizuLauncher
                 BorderProgress.Visibility = Visibility.Collapsed;
                 BorderAIChat.Visibility = Visibility.Visible;
                 _isTaskCompleted = false;
+            }
+        }
+
+        private void BtnCloseAIPanel_Click(object sender, RoutedEventArgs e)
+        {
+            if (_currentOpenMenu == AIPanelOverlay)
+            {
+                CloseCurrentMenu();
+            }
+        }
+
+        private void TxtAIChatInput_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (_currentOpenMenu != AIPanelOverlay)
+            {
+                ToggleMenu(AIPanelOverlay);
             }
         }
 
@@ -848,15 +871,21 @@ namespace MizuLauncher
                 return;
             }
 
+            if (_currentOpenMenu != AIPanelOverlay)
+            {
+                ToggleMenu(AIPanelOverlay);
+            }
+
             string currentModelId = config.Model;
             string currentApiKey = config.ApiKey;
             Uri? currentEndpoint = !string.IsNullOrEmpty(config.BaseUrl) ? new Uri(config.BaseUrl) : null;
 
-            EnsureAIOutputWindow();
-            // 移除了这里的 ShowAtPosition，改为在完成后显示
-
             TxtAIChatInput.Clear();
-            UpdateMainProgress("AI 操作中...", 0.1);
+            TxtAIStatus.Text = "AI 操作中...";
+            
+            // Append user input
+            TxtAIResponse.AppendText($"\n你: {userInput}\n\n");
+            ScrollerAI.ScrollToEnd();
 
             try
             {
@@ -919,39 +948,20 @@ namespace MizuLauncher
                 var chatService = kernel.GetRequiredService<IChatCompletionService>();
                 var result = await chatService.GetChatMessageContentAsync(chatHistory, executionSettings, kernel);
 
-                if (_aiOutputWindow != null)
-                {
-                    _aiOutputWindow.SetResponse(result.Content ?? "无响应内容");
+                TxtAIResponse.AppendText($"\nAI 助手: {result.Content ?? "无响应内容"}\n\n");
+                ScrollerAI.ScrollToEnd();
 
-                    // 计算弹出位置并显示
-                    double left = this.Left + (this.Width - _aiOutputWindow.Width) / 2;
-                    double top = this.Top + this.Height - 100;
-                    _aiOutputWindow.ShowAtPosition(left, top);
-                }
-
-                UpdateMainProgress("AI 操作完成", 1.0);
+                UpdateAIStatus("AI 操作完成", 1.0);
             }
             catch (Exception ex)
             {
-                UpdateMainProgress($"错误: {ex.Message}", 1.0);
-                if (_aiOutputWindow != null)
-                {
-                    _aiOutputWindow.SetResponse($"错误: {ex.Message}");
-                    // 发生错误也弹出，否则用户不知道失败了
-                    double left = this.Left + (this.Width - _aiOutputWindow.Width) / 2;
-                    double top = this.Top + this.Height - 100;
-                    _aiOutputWindow.ShowAtPosition(left, top);
-                }
+                UpdateAIStatus($"错误: {ex.Message}", 1.0);
+                TxtAIResponse.AppendText($"\nAI 助手错误: {ex.Message}\n\n");
+                ScrollerAI.ScrollToEnd();
             }
         }
 
-        private void EnsureAIOutputWindow()
-        {
-            if (_aiOutputWindow == null)
-            {
-                _aiOutputWindow = new AIOutputWindow();
-            }
-        }
+
 
         private void TxtAIChatInput_KeyDown(object sender, KeyEventArgs e)
         {
@@ -1964,10 +1974,6 @@ namespace MizuLauncher
 
         private void BtnClose_Click(object sender, RoutedEventArgs e)
         {
-            if (_aiOutputWindow != null)
-            {
-                _aiOutputWindow.Close();
-            }
             this.Close();
         }
 

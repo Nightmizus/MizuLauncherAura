@@ -205,7 +205,7 @@ namespace MizuLauncher
                     {
                         double progress = (double)args.ProgressedTasks / args.TotalTasks;
                         task.Progress = (int)(progress * 100);
-                        _mainWindow.UpdateMainProgress($"正在下载: {args.Name}", progress);
+                        _mainWindow.UpdateAIStatus($"正在下载: {args.Name}", progress);
                     }
                     task.Status = $"正在下载: {args.Name}";
                 };
@@ -254,7 +254,7 @@ namespace MizuLauncher
                     {
                         double progress = (double)args.ProgressedTasks / args.TotalTasks;
                         task.Progress = (int)(progress * 100);
-                        _mainWindow.UpdateMainProgress($"正在下载: {args.Name}", progress);
+                        _mainWindow.UpdateAIStatus($"正在下载: {args.Name}", progress);
                     }
                     task.Status = $"正在下载: {args.Name}";
                 };
@@ -395,13 +395,13 @@ namespace MizuLauncher
                     {
                         double progress = (double)totalRead / totalBytes;
                         task.Progress = (int)(progress * 100);
-                        _mainWindow.UpdateMainProgress($"正在下载: {fileName}", progress);
+                        _mainWindow.UpdateAIStatus($"正在下载: {fileName}", progress);
                     }
                 }
 
                 task.Progress = 100;
                 task.Status = "下载完成";
-                _mainWindow.UpdateMainProgress("下载完成", 1.0);
+                _mainWindow.UpdateAIStatus("下载完成", 1.0);
                 return $"成功：{fileName} 已下载到 {selectedVersion} 的 {folderName} 文件夹。";
             }
             catch (Exception ex)
@@ -604,7 +604,7 @@ namespace MizuLauncher
                     {
                         double progress = (double)args.ProgressedTasks / args.TotalTasks;
                         task.Progress = (int)(progress * 100);
-                        _mainWindow.UpdateMainProgress($"正在下载: {args.Name}", progress);
+                        _mainWindow.UpdateAIStatus($"正在下载: {args.Name}", progress);
                     }
                     task.Status = $"正在下载: {args.Name}";
                 };
@@ -633,7 +633,7 @@ namespace MizuLauncher
                 if (launcher == null) return "错误：启动器实例未初始化。";
 
                 task.Status = "正在安装 Forge...";
-                _mainWindow.UpdateMainProgress("正在安装 Forge...", 0.5);
+                _mainWindow.UpdateAIStatus("正在安装 Forge...", 0.5);
                 var forgeInstaller = new ForgeInstaller(launcher);
                 await forgeInstaller.Install(mcVersion, forgeVersion);
 
@@ -689,7 +689,7 @@ namespace MizuLauncher
                 if (launcher == null) return "错误：启动器实例未初始化。";
 
                 task.Status = "正在安装 NeoForge...";
-                _mainWindow.UpdateMainProgress("正在安装 NeoForge...", 0.5);
+                _mainWindow.UpdateAIStatus("正在安装 NeoForge...", 0.5);
                 var neoInstaller = new NeoForgeInstaller(launcher);
                 await neoInstaller.Install(mcVersion, neoforgeVersion);
 
@@ -779,7 +779,7 @@ namespace MizuLauncher
         {
             task.Progress = 100;
             task.Status = "安装完成";
-            _mainWindow.UpdateMainProgress("安装完成", 1.0);
+            _mainWindow.UpdateAIStatus("安装完成", 1.0);
             _mainWindow.Dispatcher.Invoke(() => _mainWindow.CallRefreshVersionList());
         }
 

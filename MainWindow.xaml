@@ -298,27 +298,7 @@
             </Setter>
         </Style>
 
-        <!-- 全局提示框样式 -->
-        <Style TargetType="ToolTip">
-            <Setter Property="Background" Value="#F02A2A2A"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#30FFFFFF"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="10,6"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ToolTip">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="8">
-                            <ContentPresenter/>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+
 
         <Style TargetType="ComboBoxItem">
             <Setter Property="Padding" Value="10,8"/>
@@ -893,8 +873,8 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBox x:Name="TxtAIChatInput" Padding="15,0" Tag="输入消息并按回车发送..." 
                                          VerticalContentAlignment="Center" Background="Transparent" BorderThickness="0"
-                                         KeyDown="TxtAIChatInput_KeyDown"/>
-                                <Button Grid.Column="1" Content="" FontFamily="Segoe MDL2 Assets" 
+                                         KeyDown="TxtAIChatInput_KeyDown" PreviewMouseDown="TxtAIChatInput_PreviewMouseDown"/>
+                                <Button Grid.Column="1" Content="&#xE110;" FontFamily="Segoe MDL2 Assets" 
                                         Style="{StaticResource BaseButtonStyle}" Width="40" Height="48" 
                                         Click="BtnAIChatSend_Click" ToolTip="发送消息"/>
                             </Grid>
@@ -1392,9 +1372,11 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="AI 助手" FontSize="20" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="TxtAIStatus" Grid.Column="1" Text="等待输入..." FontSize="14" Foreground="#80FFFFFF" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                    <TextBlock x:Name="TxtAIStatus" Grid.Column="1" Text="等待输入..." FontSize="14" Foreground="#80FFFFFF" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,10,0"/>
+                    <Button Grid.Column="2" Content="关闭" Style="{StaticResource BaseButtonStyle}" Height="35" Width="60" Click="BtnCloseAIPanel_Click" Tag="8"/>
                 </Grid>
                 
                 <Border Grid.Row="1" Background="{StaticResource CardBackground}" CornerRadius="10" BorderBrush="{StaticResource VisibleBorderBrush}" BorderThickness="1">
