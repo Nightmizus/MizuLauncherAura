@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="AI 助手" Height="450" Width="400"
+        Icon="res/icon.png"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         WindowStartupLocation="Manual" Topmost="True" ShowInTaskbar="False">
     <Window.Resources>

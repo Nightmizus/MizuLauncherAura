@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="MizuLauncher Aura" Height="500" Width="820"
+        Icon="res/icon.png"
         MinHeight="500" MinWidth="820"
         WindowStartupLocation="CenterScreen"
         Background="Transparent"
@@ -1373,6 +1374,34 @@
                         </ControlTemplate>
                     </ListBox.Template>
                 </ListBox>
+            </Grid>
+        </Grid>
+
+        <!-- AI 面板 (Overlay) -->
+        <Grid x:Name="AIPanelOverlay" Grid.RowSpan="3" Visibility="Collapsed" Background="#F01E1E1E">
+            <Grid.RenderTransform>
+                <TranslateTransform Y="500"/>
+            </Grid.RenderTransform>
+            <Grid Margin="40,70,40,90">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="AI 助手" FontSize="20" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="TxtAIStatus" Grid.Column="1" Text="等待输入..." FontSize="14" Foreground="#80FFFFFF" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                </Grid>
+                
+                <Border Grid.Row="1" Background="{StaticResource CardBackground}" CornerRadius="10" BorderBrush="{StaticResource VisibleBorderBrush}" BorderThickness="1">
+                    <ScrollViewer x:Name="ScrollerAI" VerticalScrollBarVisibility="Auto" Padding="15">
+                        <TextBox x:Name="TxtAIResponse" IsReadOnly="True" TextWrapping="Wrap" Background="Transparent" BorderThickness="0" Foreground="White" FontSize="14" AcceptsReturn="True"/>
+                    </ScrollViewer>
+                </Border>
             </Grid>
         </Grid>
     </Grid>
