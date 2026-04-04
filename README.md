@@ -1,2 +1,5 @@
 # MizuLauncher Aura
-Nightmizus's Modern Design □□ □□□□□□□ Minecraft Launcher
+
+AI驱动MC启动器
+
+目前项目搁置
