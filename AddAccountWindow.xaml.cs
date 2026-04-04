@@ -69,6 +69,17 @@ namespace MizuLauncher
             this.Close();
         }
 
+        private void BtnLittleSkinLogin_Click(object sender, RoutedEventArgs e)
+        {
+            var win = new LittleSkinLoginWindow { Owner = this };
+            if (win.ShowDialog() == true && win.ResultPlayer != null)
+            {
+                ResultPlayer = win.ResultPlayer;
+                this.DialogResult = true;
+                this.Close();
+            }
+        }
+
         private async void BtnMicrosoftLogin_Click(object sender, RoutedEventArgs e)
         {
             try

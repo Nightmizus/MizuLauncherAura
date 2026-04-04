@@ -1,55 +1,27 @@
 {
   "BackgroundType": 3,
   "CustomColor": "#FF1E1E1E",
-  "PlayerName": "Hakurei_Reimu",
-  "Players": [],
-  "ShowDragHint": true,
-  "AiConfigs": [
+  "PlayerName": "Mizusumi",
+  "Players": [
     {
-      "Provider": "OpenAI",
-      "ApiKey": "",
-      "Model": "gpt-4o",
-      "BaseUrl": "https://api.openai.com/v1"
+      "Name": "Mizusumi",
+      "IsOnline": true,
+      "UUID": "8a4504f1253b4ae19a1b6cbfc46b1d47",
+      "AccessToken": "eyJraWQiOiIwNDkxODEiLCJhbGciOiJSUzI1NiJ9.eyJ4dWlkIjoiMjUzNTQ0MTE1MzE5MDYyNiIsImFnZyI6IkFkdWx0Iiwic3ViIjoiZjZiMGVjZjItZTk3OC00NTY4LTlkYmEtNTE2MDNkOTczZGRjIiwiYXV0aCI6IlhCT1giLCJucyI6ImRlZmF1bHQiLCJyb2xlcyI6W10sImlzcyI6ImF1dGhlbnRpY2F0aW9uIiwiZmxhZ3MiOlsibXVsdGlwbGF5ZXIiXSwicHJvZmlsZXMiOnsibWMiOiI4YTQ1MDRmMS0yNTNiLTRhZTEtOWExYi02Y2JmYzQ2YjFkNDcifSwicGxhdGZvcm0iOiJQQ19MQVVOQ0hFUiIsInBmZCI6W3sidHlwZSI6Im1jIiwiaWQiOiI4YTQ1MDRmMS0yNTNiLTRhZTEtOWExYi02Y2JmYzQ2YjFkNDciLCJuYW1lIjoiTWl6dXN1bWkifV0sIm5iZiI6MTc3NTI5MjEyNCwiZXhwIjoxNzc1Mzc4NTI0LCJpYXQiOjE3NzUyOTIxMjQsImFpZCI6IjAwMDAwMDAwLTAwMDAtMDAwMC0wMDAwLTAwMDA0MDJiNTMyOCJ9.djpNLHgNnrj7mQWxFkaOGNDIoxGDKavF7DX--QbUSnJOj9PAu_qhQf-ZAXEkRofydTAjD_D6O-ENzTUUxG_FHa_SL95eQslZ5u3vg-UVO2fWoFPq1gG0O7v0n6OOM20TsY1VaVzVQzH7xttSJzAIcZzDG8LnZnTUIf0a_5XVHUr6tXXytwAcxDYGE3seP-p2qGtJQBQBMICgE2EMWanUPlT-wHk7bzt8nMwt-vUMIL6V6mblIVYREQlT6JbSIoxv1lqKmcCuMnNQw1-rbwO6-owQGXyqSFgdLPees3j84EZfzosvfaQkgdV9OBC2xJK8Sx63P6PcTSwF31Obm8SQRA",
+      "AuthType": null
     },
     {
-      "Provider": "DeepSeek",
-      "ApiKey": "",
-      "Model": "deepseek-chat",
-      "BaseUrl": "https://api.deepseek.com/v1"
-    },
-    {
-      "Provider": "GLM (ZhipuAI)",
-      "ApiKey": "",
-      "Model": "glm-4.7-flash",
-      "BaseUrl": "https://open.bigmodel.cn/api/paas/v4/"
-    },
-    {
-      "Provider": "Claude (Anthropic)",
-      "ApiKey": "",
-      "Model": "claude-3-5-sonnet-20240620",
-      "BaseUrl": "https://api.anthropic.com/v1"
-    },
-    {
-      "Provider": "Gemini (Google)",
-      "ApiKey": "",
-      "Model": "gemini-1.5-pro",
-      "BaseUrl": "https://generativelanguage.googleapis.com/v1beta/openai/"
-    },
-    {
-      "Provider": "Moonshot (Kimi)",
-      "ApiKey": "",
-      "Model": "moonshot-v1-8k",
-      "BaseUrl": "https://api.moonshot.cn/v1"
-    },
-    {
-      "Provider": "Custom",
-      "ApiKey": "",
-      "Model": "",
-      "BaseUrl": ""
+      "Name": "Hakurei_Reimu",
+      "IsOnline": false,
+      "UUID": null,
+      "AccessToken": null,
+      "AuthType": null
     }
   ],
+  "ShowDragHint": true,
+  "AiConfigs": null,
   "AiProvider": "DeepSeek",
-  "FakeMicrosoftAccount": true,
-  "AutoRam": false,
-  "MaxRamMb": 6656
+  "FakeMicrosoftAccount": false,
+  "AutoRam": true,
+  "MaxRamMb": 2048
 }

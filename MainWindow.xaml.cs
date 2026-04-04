@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -127,6 +128,88 @@ namespace MizuLauncher
         private string _aiProvider = "DeepSeek";
         private int _maxRamMb = 4096;
 
+        private void Window_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                foreach (string file in files)
+                {
+                    if (file.EndsWith(".jar", StringComparison.OrdinalIgnoreCase))
+                    {
+                        InstallModFromJar(file);
+                    }
+                }
+            }
+            else if (e.Data.GetDataPresent(DataFormats.Text) || e.Data.GetDataPresent(DataFormats.StringFormat) || e.Data.GetDataPresent(DataFormats.UnicodeText))
+            {
+                string text = "";
+                if (e.Data.GetDataPresent(DataFormats.UnicodeText))
+                    text = (string)e.Data.GetData(DataFormats.UnicodeText);
+                else if (e.Data.GetDataPresent(DataFormats.Text))
+                    text = (string)e.Data.GetData(DataFormats.Text);
+                else
+                    text = (string)e.Data.GetData(DataFormats.StringFormat);
+
+                if (text != null)
+                {
+                    if (text.Contains("littleskin.cn") || text.Contains("littlesk.in") || text.Contains("yggdrasil") || text.StartsWith("authlib-injector:"))
+                    {
+                        OpenLittleSkinLogin(text);
+                    }
+                }
+            }
+        }
+
+        private void InstallModFromJar(string jarPath)
+        {
+            if (ListVersionsCenter.SelectedItem is not VersionItemInfo item || string.IsNullOrEmpty(item.Name))
+            {
+                MessageBox.Show("请先选择一个版本再拖入 Mod。");
+                return;
+            }
+
+            string selectedVersion = item.Name;
+            string modsDir = Path.Combine(_baseMcPath?.BasePath ?? "", "versions", selectedVersion, "mods");
+
+            try
+            {
+                if (!Directory.Exists(modsDir))
+                {
+                    Directory.CreateDirectory(modsDir);
+                }
+
+                string fileName = Path.GetFileName(jarPath);
+                string destPath = Path.Combine(modsDir, fileName);
+
+                File.Copy(jarPath, destPath, true);
+                MessageBox.Show($"Mod {fileName} 已成功安装到版本 {selectedVersion}！", "安装成功");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"安装 Mod 失败: {ex.Message}", "错误");
+            }
+        }
+
+        private void OpenLittleSkinLogin(string? url = null)
+        {
+            var win = new LittleSkinLoginWindow { Owner = this };
+            if (!string.IsNullOrEmpty(url))
+            {
+                if (url.StartsWith("authlib-injector:"))
+                    url = url.Substring("authlib-injector:".Length);
+                win.SetApiUrl(url);
+            }
+            if (win.ShowDialog() == true && win.ResultPlayer != null)
+            {
+                OnlinePlayers.Add(win.ResultPlayer);
+                SaveConfig();
+                _currentPlayerName = win.ResultPlayer.Name;
+                UpdatePlayerUIFromState().Wait();
+                MessageBox.Show("LittleSkin 登录成功！", "提示");
+            }
+        }
+
         public MainWindow()
         {
             // 全局崩溃拦截写入日志 
@@ -157,7 +240,7 @@ namespace MizuLauncher
                 if (ListDownloadTasks_Settings != null) ListDownloadTasks_Settings.ItemsSource = DownloadTasks;
                 ListVersionsCenter.ItemsSource = FilteredVersions;
 
-                string mcDirPath = @"C:\Users\Mizusumi\Personal\play\mc\.minecraft";
+                string mcDirPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ".minecraft");
                 _baseMcPath = new MinecraftPath(mcDirPath);
                 _launcher = new MinecraftLauncher(_baseMcPath);
 
@@ -312,6 +395,31 @@ namespace MizuLauncher
                         ComboLoaderVersions_Settings.Items.Clear();
                         foreach (var f in forgeVersions.Take(10))
                             ComboLoaderVersions_Settings.Items.Add(f.ForgeVersionName);
+                    }
+                    else if (rb == RadioNeoForge_Settings_Download)
+                    {
+                        using var client = new System.Net.Http.HttpClient();
+                        var response = await client.GetStringAsync($"https://bmclapi2.bangbang93.com/neoforge/list/{mcVersion}");
+                        var doc = JsonDocument.Parse(response);
+                        ComboLoaderVersions_Settings.Items.Clear();
+                        foreach (var item in doc.RootElement.EnumerateArray().Take(20))
+                        {
+                            ComboLoaderVersions_Settings.Items.Add(item.GetProperty("version").GetString());
+                        }
+                    }
+                    else if (rb == RadioLiteLoader_Settings_Download)
+                    {
+                        using var client = new System.Net.Http.HttpClient();
+                        var response = await client.GetStringAsync($"https://bmclapi2.bangbang93.com/liteloader/list");
+                        var doc = JsonDocument.Parse(response);
+                        ComboLoaderVersions_Settings.Items.Clear();
+                        foreach (var item in doc.RootElement.EnumerateArray())
+                        {
+                            if (item.GetProperty("mcversion").GetString() == mcVersion)
+                            {
+                                ComboLoaderVersions_Settings.Items.Add(item.GetProperty("version").GetString());
+                            }
+                        }
                     }
                     else if (rb == RadioFabric_Settings_Download)
                     {
@@ -474,6 +582,54 @@ namespace MizuLauncher
                             await File.WriteAllTextAsync(jsonPath, jsonContent);
                         }
                     }
+                    else if (RadioNeoForge_Settings_Download?.IsChecked == true && !string.IsNullOrEmpty(loaderVersion))
+                    {
+                        task.Status = "正在安装 NeoForge...";
+                        var neoInstaller = new CmlLib.Core.Installer.NeoForge.NeoForgeInstaller(_launcher);
+                        await neoInstaller.Install(mcVersion, loaderVersion);
+                    }
+                    else if (RadioLiteLoader_Settings_Download?.IsChecked == true && !string.IsNullOrEmpty(loaderVersion))
+                    {
+                        task.Status = "正在安装 LiteLoader...";
+                        using var client = new System.Net.Http.HttpClient();
+                        var response = await client.GetStringAsync($"https://bmclapi2.bangbang93.com/liteloader/list");
+                        using var doc = JsonDocument.Parse(response);
+                        JsonElement? targetBuild = null;
+                        foreach (var item in doc.RootElement.EnumerateArray())
+                        {
+                            if (item.GetProperty("mcversion").GetString() == mcVersion && item.GetProperty("version").GetString() == loaderVersion)
+                            {
+                                targetBuild = item;
+                                break;
+                            }
+                        }
+                        if (targetBuild != null)
+                        {
+                            string versionName = $"{mcVersion}-liteloader-{loaderVersion}";
+                            string versionDir = Path.Combine(_baseMcPath?.Versions ?? "", versionName);
+                            Directory.CreateDirectory(versionDir);
+                            string jsonPath = Path.Combine(versionDir, $"{versionName}.json");
+                            
+                            var build = targetBuild.Value.GetProperty("build");
+                            var libraries = new System.Collections.Generic.List<object>();
+                            foreach (var lib in build.GetProperty("libraries").EnumerateArray())
+                            {
+                                libraries.Add(new { name = lib.GetProperty("name").GetString() });
+                            }
+                            libraries.Add(new { name = $"com.mumfrey:liteloader:{loaderVersion}", url = "https://bmclapi2.bangbang93.com/maven/" });
+                            
+                            var liteloaderJson = new
+                            {
+                                id = versionName,
+                                inheritsFrom = mcVersion,
+                                type = "release",
+                                mainClass = "net.minecraft.launchwrapper.Launch",
+                                minecraftArguments = $"--tweakClass {build.GetProperty("tweakClass").GetString()}",
+                                libraries = libraries
+                            };
+                            await System.IO.File.WriteAllTextAsync(jsonPath, System.Text.Json.JsonSerializer.Serialize(liteloaderJson, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+                        }
+                    }
                     else if (RadioFabric_Settings_Download?.IsChecked == true && !string.IsNullOrEmpty(loaderVersion))
                     {
                         task.Status = "正在从 Fabric Meta 获取配置...";
@@ -629,7 +785,7 @@ namespace MizuLauncher
                     return;
                 }
 
-                string selectedVersion = ListVersionsCenter.SelectedItem.ToString()!;
+                string selectedVersion = (ListVersionsCenter.SelectedItem as VersionItemInfo)?.Name!;
                 var task = new DownloadTask { Name = $"下载 Mod: {version.FileName}", Progress = 0, Status = "准备下载..." };
                 DownloadTasks.Add(task);
 
@@ -688,7 +844,7 @@ namespace MizuLauncher
             string modsPath;
             if (ListVersionsCenter.SelectedItem != null)
             {
-                string selectedVersion = ListVersionsCenter.SelectedItem.ToString()!;
+                string selectedVersion = (ListVersionsCenter.SelectedItem as VersionItemInfo)?.Name!;
                 modsPath = Path.Combine(_baseMcPath?.BasePath ?? "", "versions", selectedVersion, "mods");
             }
             else
@@ -865,7 +1021,7 @@ namespace MizuLauncher
             string userInput = TxtAIChatInput.Text.Trim();
             if (string.IsNullOrEmpty(userInput)) return;
 
-            if (!_aiConfigs.TryGetValue(_aiProvider, out var config) || string.IsNullOrEmpty(config.ApiKey))
+            if (!_aiConfigs.TryGetValue(_aiProvider, out var config) || string.IsNullOrEmpty(config.GetDecryptedApiKey()))
             {
                 MessageBox.Show($"请先在“更多”页面设置 {_aiProvider} 的 API Key。");
                 return;
@@ -877,7 +1033,7 @@ namespace MizuLauncher
             }
 
             string currentModelId = config.Model;
-            string currentApiKey = config.ApiKey;
+            string currentApiKey = config.GetDecryptedApiKey();
             Uri? currentEndpoint = !string.IsNullOrEmpty(config.BaseUrl) ? new Uri(config.BaseUrl) : null;
 
             TxtAIChatInput.Clear();
@@ -889,7 +1045,7 @@ namespace MizuLauncher
 
             try
             {
-                string selectedVersion = ListVersionsCenter.SelectedItem?.ToString() ?? "未选择";
+                string selectedVersion = (ListVersionsCenter.SelectedItem as VersionItemInfo)?.Name ?? "未选择";
                 string systemPrompt = $@"你是一个专业的 Minecraft 启动器助手。
 当前用户选择的游戏版本是：{selectedVersion}。
 你的任务是帮助用户管理模组、解决问题，以及安装新的游戏版本、核心、光影包和材质包。
@@ -1038,12 +1194,15 @@ namespace MizuLauncher
                     }
                 }
 
+                string? previousSelection = (ListVersionsCenter.SelectedItem as VersionItemInfo)?.Name;
+                
                 FilterVersionList();
 
                 if (FilteredVersions.Count > 0)
                 {
-                    ListVersionsCenter.SelectedIndex = 0;
-                    TxtCurrentVersion.Text = FilteredVersions[0].Name ?? "未选择版本";
+                    var itemToSelect = FilteredVersions.FirstOrDefault(v => v.Name == previousSelection) ?? FilteredVersions[0];
+                    ListVersionsCenter.SelectedItem = itemToSelect;
+                    TxtCurrentVersion.Text = itemToSelect.Name ?? "未选择版本";
                     BtnLaunch.IsEnabled = true;
                 }
                 else
@@ -1111,7 +1270,15 @@ namespace MizuLauncher
                                 else if (libName.StartsWith("net.neoforged:neoforge:"))
                                 {
                                     type = "NeoForge";
-                                    icon = "forge.png"; // 如果没有专门的neoforge图标可以共用或另加
+                                    icon = "neoforge.png";
+                                    var parts = libName.Split(':');
+                                    if (parts.Length >= 3) loaderVersion = parts[2];
+                                    break;
+                                }
+                                else if (libName.StartsWith("com.mumfrey:liteloader:"))
+                                {
+                                    type = "LiteLoader";
+                                    icon = "liteloader.png";
                                     var parts = libName.Split(':');
                                     if (parts.Length >= 3) loaderVersion = parts[2];
                                     break;
@@ -1119,18 +1286,45 @@ namespace MizuLauncher
                             }
                         }
 
-                        // 兜底方案：如果库里没找到，根据 mainClass 判断加载器
-                        if (string.IsNullOrEmpty(loaderVersion) && v.MainClass != null)
+                        // 兜底方案：如果库里没找到，根据 mainClass 甚至版本名判断加载器
+                        if (string.IsNullOrEmpty(loaderVersion))
                         {
-                            if (v.MainClass.Contains("fabric", StringComparison.OrdinalIgnoreCase))
+                            if (v.MainClass != null)
                             {
-                                type = "Fabric";
-                                icon = "fabric.png";
+                                if (v.MainClass.Contains("fabric", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    type = "Fabric";
+                                    icon = "fabric.png";
+                                }
+                                else if (v.MainClass.Contains("liteloader", StringComparison.OrdinalIgnoreCase) || v.MainClass.Contains("com.mumfrey.liteloader.launch.LiteLoaderTweaker"))
+                                {
+                                    type = "LiteLoader";
+                                    icon = "liteloader.png";
+                                }
+                                else if (v.MainClass.Contains("cpw.mods.bootstraplauncher.Main") || v.MainClass.Contains("net.minecraftforge.bootstrap.ForgeBootstrap"))
+                                {
+                                    // 无法单纯通过 MainClass 区分 Forge 和 NeoForge，借助名称
+                                    if (vName.Contains("neoforge", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        type = "NeoForge";
+                                        icon = "neoforge.png";
+                                    }
+                                    else
+                                    {
+                                        type = "Forge";
+                                        icon = "forge.png";
+                                    }
+                                }
                             }
-                            else if (v.MainClass.Contains("cpw.mods.bootstraplauncher.Main") || v.MainClass.Contains("net.minecraftforge.bootstrap.ForgeBootstrap"))
+
+                            // 最后的兜底：名称匹配
+                            if (type == "原版")
                             {
-                                type = "Forge";
-                                icon = "forge.png";
+                                if (vName.Contains("neoforge", StringComparison.OrdinalIgnoreCase)) { type = "NeoForge"; icon = "neoforge.png"; }
+                                else if (vName.Contains("forge", StringComparison.OrdinalIgnoreCase)) { type = "Forge"; icon = "forge.png"; }
+                                else if (vName.Contains("fabric", StringComparison.OrdinalIgnoreCase)) { type = "Fabric"; icon = "fabric.png"; }
+                                else if (vName.Contains("quilt", StringComparison.OrdinalIgnoreCase)) { type = "Quilt"; icon = "quilt.png"; }
+                                else if (vName.Contains("liteloader", StringComparison.OrdinalIgnoreCase)) { type = "LiteLoader"; icon = "liteloader.png"; }
                             }
                         }
 
@@ -1173,7 +1367,10 @@ namespace MizuLauncher
             if (ListVersionsCenter.SelectedItem is VersionItemInfo item)
             {
                 TxtCurrentVersion.Text = item.Name;
-                CloseCurrentMenu();
+                if (_currentOpenMenu == Row1VersionPanel)
+                {
+                    CloseCurrentMenu();
+                }
                 BtnLaunch.IsEnabled = true;
             }
         }
@@ -1298,35 +1495,44 @@ namespace MizuLauncher
         };
 
         private string ConfigExportDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "MizuLauncherAura_Configs");
-        private string AppDataDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MizuLauncherAura");
+        private string AppDataDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MizuLauncherAura");
         private string AiConfigsPath => Path.Combine(AppDataDir, "ai_configs.json");
 
         private void SaveConfig()
         {
+            // 在保存到 launcher_config.json 前，清空 AiConfigs，不保存到当前目录
+            var config = new LauncherConfig
+            {
+                BackgroundType = _currentBgType,
+                CustomColor = _currentCustomColor,
+                PlayerName = _currentPlayerName,
+                Players = OnlinePlayers.Concat(OfflinePlayers).ToList(),
+                AiConfigs = null, // 不要保存 API Key 到当前目录
+                AiProvider = _aiProvider,
+                FakeMicrosoftAccount = _fakeMicrosoftAccount,
+                AutoRam = _autoRam,
+                MaxRamMb = _maxRamMb
+            };
+            string json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+
             try
             {
-                var config = new LauncherConfig
-                {
-                    BackgroundType = _currentBgType,
-                    CustomColor = _currentCustomColor,
-                    PlayerName = _currentPlayerName,
-                    Players = OnlinePlayers.Concat(OfflinePlayers).ToList(),
-                    AiConfigs = _aiConfigs.Values.ToList(),
-                    AiProvider = _aiProvider,
-                    FakeMicrosoftAccount = _fakeMicrosoftAccount,
-                    AutoRam = _autoRam,
-                    MaxRamMb = _maxRamMb
-                };
-                string json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(ConfigFileName, json);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Save ConfigFileName error: {ex.Message}");
+            }
 
-                // 实时同步 AI 配置到配置文件夹
+            try
+            {
+                // 实时同步 AI 配置到 AppData 文件夹
                 Directory.CreateDirectory(AppDataDir);
                 File.WriteAllText(AiConfigsPath, JsonSerializer.Serialize(_aiConfigs.Values.ToList(), new JsonSerializerOptions { WriteIndented = true }));
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Save config error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Save AiConfigsPath error: {ex.Message}");
             }
         }
 
@@ -1367,34 +1573,21 @@ namespace MizuLauncher
                         {
                             foreach (var ai in config.AiConfigs)
                             {
-                                if (!string.IsNullOrEmpty(ai.Provider))
+                                if (!string.IsNullOrEmpty(ai.Provider) && _aiConfigs.ContainsKey(ai.Provider))
                                 {
-                                    _aiConfigs[ai.Provider] = ai;
+                                    // 仅当没有更安全的 AppData 配置时，才从 launcher_config.json 恢复基础信息（不恢复空 Key 覆盖已有 Key）
+                                    if (!string.IsNullOrEmpty(ai.ApiKey))
+                                        _aiConfigs[ai.Provider].ApiKey = ai.ApiKey;
+                                    if (!string.IsNullOrEmpty(ai.Model))
+                                        _aiConfigs[ai.Provider].Model = ai.Model;
+                                    if (!string.IsNullOrEmpty(ai.BaseUrl))
+                                        _aiConfigs[ai.Provider].BaseUrl = ai.BaseUrl;
                                 }
                             }
                         }
 
                         if (ChkFakeMicrosoft_Settings != null)
                             ChkFakeMicrosoft_Settings.IsChecked = _fakeMicrosoftAccount;
-
-                        // 尝试从同步文件恢复
-                        if (File.Exists(AiConfigsPath))
-                        {
-                            var syncedConfigs = JsonSerializer.Deserialize<List<AiConfig>>(File.ReadAllText(AiConfigsPath));
-                            if (syncedConfigs != null)
-                            {
-                                foreach (var ai in syncedConfigs)
-                                {
-                                    if (!string.IsNullOrEmpty(ai.Provider))
-                                    {
-                                        _aiConfigs[ai.Provider] = ai;
-                                    }
-                                }
-                            }
-                        }
-
-                        // 更新 UI
-                        UpdateAiSettingsUI();
 
                         if (config.Players != null)
                         {
@@ -1415,53 +1608,109 @@ namespace MizuLauncher
                         {
                             _currentPlayerName = "添加玩家";
                         }
-
-                        // Apply to UI state
-                        UpdateBackgroundUIFromState();
-                        _ = UpdatePlayerUIFromState();
                     }
-                }
-                else
-                {
-                    // No config file, ensure defaults are applied
-                    UpdateBackgroundUIFromState();
-                    _ = UpdatePlayerUIFromState();
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Load config error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Load main config error: {ex.Message}");
+            }
+
+            try
+            {
+                // 尝试从同步文件恢复 AI 配置
+                if (File.Exists(AiConfigsPath))
+                {
+                    var syncedConfigs = JsonSerializer.Deserialize<List<AiConfig>>(File.ReadAllText(AiConfigsPath));
+                    if (syncedConfigs != null)
+                    {
+                        foreach (var ai in syncedConfigs)
+                        {
+                            if (!string.IsNullOrEmpty(ai.Provider) && _aiConfigs.ContainsKey(ai.Provider))
+                            {
+                                if (!string.IsNullOrEmpty(ai.ApiKey))
+                                    _aiConfigs[ai.Provider].ApiKey = ai.ApiKey;
+                                if (!string.IsNullOrEmpty(ai.Model))
+                                    _aiConfigs[ai.Provider].Model = ai.Model;
+                                if (!string.IsNullOrEmpty(ai.BaseUrl))
+                                    _aiConfigs[ai.Provider].BaseUrl = ai.BaseUrl;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Load AI configs error: {ex.Message}");
+            }
+
+            // 确保旧的明文 API Key 被加密
+            bool needsSave = false;
+            foreach (var ai in _aiConfigs.Values)
+            {
+                if (!string.IsNullOrEmpty(ai.ApiKey))
+                {
+                    string dec = ai.GetDecryptedApiKey();
+                    if (dec == ai.ApiKey) // 如果解密结果等于原字符串，说明是旧的明文
+                    {
+                        ai.SetAndEncryptApiKey(dec);
+                        needsSave = true;
+                    }
+                }
+            }
+            if (needsSave)
+            {
+                SaveConfig();
+            }
+
+            // 更新 UI
+            _isUpdatingAiUI = true;
+            try
+            {
+                UpdateAiSettingsUI_Internal();
+                UpdateBackgroundUIFromState();
+                _ = UpdatePlayerUIFromState();
+            }
+            finally
+            {
+                _isUpdatingAiUI = false;
             }
         }
 
         private void UpdateAiSettingsUI()
         {
+            if (_isUpdatingAiUI) return;
             _isUpdatingAiUI = true;
             try
             {
-                if (ComboAiProvider_Settings != null)
-                {
-                    foreach (ComboBoxItem item in ComboAiProvider_Settings.Items)
-                    {
-                        if (item.Content.ToString() == _aiProvider)
-                        {
-                            ComboAiProvider_Settings.SelectedItem = item;
-                            break;
-                        }
-                    }
-                }
-
-                // 加载当前提供商的配置
-                if (_aiConfigs.TryGetValue(_aiProvider, out var config))
-                {
-                    if (TxtAiApiKey_Settings != null) TxtAiApiKey_Settings.Password = config.ApiKey ?? "";
-                    if (TxtAiModel_Settings != null) TxtAiModel_Settings.Text = config.Model ?? "";
-                    if (TxtAiBaseUrl_Settings != null) TxtAiBaseUrl_Settings.Text = config.BaseUrl ?? "";
-                }
+                UpdateAiSettingsUI_Internal();
             }
             finally
             {
                 _isUpdatingAiUI = false;
+            }
+        }
+
+        private void UpdateAiSettingsUI_Internal()
+        {
+            if (ComboAiProvider_Settings != null)
+            {
+                foreach (ComboBoxItem item in ComboAiProvider_Settings.Items)
+                {
+                    if (item.Content.ToString() == _aiProvider)
+                    {
+                        ComboAiProvider_Settings.SelectedItem = item;
+                        break;
+                    }
+                }
+            }
+
+            // 加载当前提供商的配置
+            if (_aiConfigs.TryGetValue(_aiProvider, out var config))
+            {
+                if (TxtAiApiKey_Settings != null) TxtAiApiKey_Settings.Password = config.GetDecryptedApiKey() ?? "";
+                if (TxtAiModel_Settings != null) TxtAiModel_Settings.Text = config.Model ?? "";
+                if (TxtAiBaseUrl_Settings != null) TxtAiBaseUrl_Settings.Text = config.BaseUrl ?? "";
             }
         }
 
@@ -1472,7 +1721,7 @@ namespace MizuLauncher
             if (_isUpdatingAiUI) return;
             if (sender is PasswordBox pb && _aiConfigs.TryGetValue(_aiProvider, out var config))
             {
-                config.ApiKey = pb.Password;
+                config.SetAndEncryptApiKey(pb.Password);
                 SaveConfig();
             }
         }
@@ -1905,6 +2154,7 @@ namespace MizuLauncher
             private bool _isOnline = false;
             private string? _uuid;
             private string? _accessToken;
+            private string? _authType;
 
             public string Name
             {
@@ -1930,6 +2180,12 @@ namespace MizuLauncher
                 set { _accessToken = value; OnPropertyChanged(nameof(AccessToken)); }
             }
 
+            public string? AuthType
+            {
+                get => _authType;
+                set { _authType = value; OnPropertyChanged(nameof(AuthType)); }
+            }
+
             [System.Text.Json.Serialization.JsonIgnore]
             public System.Windows.Media.Imaging.BitmapImage? Avatar
             {
@@ -1947,6 +2203,52 @@ namespace MizuLauncher
             public string ApiKey { get; set; } = "";
             public string Model { get; set; } = "";
             public string? BaseUrl { get; set; }
+
+            public string GetDecryptedApiKey()
+            {
+                if (string.IsNullOrEmpty(ApiKey)) return "";
+                try
+                {
+                    byte[] encryptedBytesToDecrypt = Convert.FromBase64String(ApiKey);
+                    byte[] decryptedBytes = System.Security.Cryptography.ProtectedData.Unprotect(encryptedBytesToDecrypt, null, System.Security.Cryptography.DataProtectionScope.CurrentUser);
+                    return System.Text.Encoding.UTF8.GetString(decryptedBytes);
+                }
+                catch (System.Security.Cryptography.CryptographicException)
+                {
+                    // If it fails to decrypt, it might be an old plain-text key or corrupted.
+                    // Let's assume it's plain-text if it fails, or just return empty.
+                    // For safety, we return the raw string if it's not base64 or not encrypted by us.
+                    return ApiKey;
+                }
+                catch (FormatException)
+                {
+                    // Not a valid base64 string, probably an old plain text key
+                    return ApiKey;
+                }
+                catch (Exception)
+                {
+                    return ApiKey;
+                }
+            }
+
+            public void SetAndEncryptApiKey(string plainTextKey)
+            {
+                if (string.IsNullOrEmpty(plainTextKey))
+                {
+                    ApiKey = "";
+                    return;
+                }
+                try
+                {
+                    byte[] secretBytes = System.Text.Encoding.UTF8.GetBytes(plainTextKey);
+                    byte[] encryptedBytes = System.Security.Cryptography.ProtectedData.Protect(secretBytes, null, System.Security.Cryptography.DataProtectionScope.CurrentUser);
+                    ApiKey = Convert.ToBase64String(encryptedBytes);
+                }
+                catch
+                {
+                    ApiKey = plainTextKey;
+                }
+            }
         }
 
         public class LauncherConfig
@@ -2033,15 +2335,40 @@ namespace MizuLauncher
                                   ?? OfflinePlayers.FirstOrDefault(p => p.Name == _currentPlayerName);
 
                 MSession session;
+                string? extraJvmArg = null;
+                
                 if (currentPlayer != null && currentPlayer.IsOnline && !string.IsNullOrEmpty(currentPlayer.AccessToken))
                 {
-                    session = new MSession
+                    if (currentPlayer.AuthType == "LittleSkin")
                     {
-                        Username = currentPlayer.Name,
-                        UUID = currentPlayer.UUID,
-                        AccessToken = currentPlayer.AccessToken,
-                        UserType = "msa"
-                    };
+                        session = new MSession
+                        {
+                            Username = currentPlayer.Name,
+                            UUID = currentPlayer.UUID,
+                            AccessToken = currentPlayer.AccessToken,
+                            UserType = "Mojang"
+                        };
+                        
+                        string authlibPath = Path.Combine(_baseMcPath.BasePath, "authlib-injector.jar");
+                        if (!File.Exists(authlibPath))
+                        {
+                            TxtProgressStep.Text = "正在下载 authlib-injector...";
+                            using var client = new HttpClient();
+                            var bytes = await client.GetByteArrayAsync("https://authlib-injector.yushi.moe/artifact/latest.jar");
+                            await File.WriteAllBytesAsync(authlibPath, bytes);
+                        }
+                        extraJvmArg = $"-javaagent:\"{authlibPath}\"=https://littleskin.cn/api/yggdrasil";
+                    }
+                    else
+                    {
+                        session = new MSession
+                        {
+                            Username = currentPlayer.Name,
+                            UUID = currentPlayer.UUID,
+                            AccessToken = currentPlayer.AccessToken,
+                            UserType = "msa"
+                        };
+                    }
                 }
                 else
                 {
@@ -2054,6 +2381,11 @@ namespace MizuLauncher
                     MaximumRamMb = _autoRam ? GetRecommendedMemoryMb() : _maxRamMb,
                     Session = session
                 };
+                
+                if (extraJvmArg != null)
+                {
+                    launchOption.ExtraJvmArguments = new[] { new CmlLib.Core.ProcessBuilder.MArgument(extraJvmArg) };
+                }
 
                 WriteLog($"游戏启动内存分配: {launchOption.MaximumRamMb} MB");
                 TxtProgressStep.Text = $"正在校验资源 (内存分配: {launchOption.MaximumRamMb}MB)...";
@@ -2149,7 +2481,7 @@ namespace MizuLauncher
                 return;
             }
 
-            string versionName = ListVersionsCenter.SelectedItem.ToString()!;
+            string versionName = (ListVersionsCenter.SelectedItem as VersionItemInfo)?.Name!;
             string optionsPath = Path.Combine(_baseMcPath!.BasePath, "versions", versionName, "options.txt");
 
             if (!File.Exists(optionsPath))
@@ -2196,7 +2528,7 @@ namespace MizuLauncher
                 return;
             }
 
-            string versionName = ListVersionsCenter.SelectedItem.ToString()!;
+            string versionName = (ListVersionsCenter.SelectedItem as VersionItemInfo)?.Name!;
             string configName = ComboSavedConfigs.SelectedItem.ToString()!;
             string optionsPath = Path.Combine(_baseMcPath!.BasePath, "versions", versionName, "options.txt");
             string importDir = Path.Combine(ConfigExportDir, "Keybinds", configName);
@@ -2236,11 +2568,11 @@ namespace MizuLauncher
                             string value = parts[1].Trim();
                             if (key == "DeepSeekApiKey" && _aiConfigs.ContainsKey("DeepSeek"))
                             {
-                                _aiConfigs["DeepSeek"].ApiKey = value;
+                                _aiConfigs["DeepSeek"].SetAndEncryptApiKey(value);
                             }
                             else if (key == "GlmApiKey" && _aiConfigs.ContainsKey("GLM (ZhipuAI)"))
                             {
-                                _aiConfigs["GLM (ZhipuAI)"].ApiKey = value;
+                                _aiConfigs["GLM (ZhipuAI)"].SetAndEncryptApiKey(value);
                             }
                         }
                     }

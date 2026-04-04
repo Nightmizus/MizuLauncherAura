@@ -12,7 +12,8 @@
         WindowStyle="None"
         ResizeMode="CanResize"
         Foreground="White"
-        FontFamily="Microsoft YaHei UI">
+        FontFamily="Microsoft YaHei UI"
+        AllowDrop="True" Drop="Window_Drop">
 
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="40" 
@@ -22,7 +23,6 @@
     </WindowChrome.WindowChrome>
 
     <Window.Resources>
-        <CornerRadius x:Key="MainCornerRadius">12</CornerRadius>
         <SolidColorBrush x:Key="CardBackground" Color="White" Opacity="0.03"/>
         <SolidColorBrush x:Key="CardBorder" Color="Transparent"/>
         <SolidColorBrush x:Key="VisibleBorderBrush" Color="White" Opacity="0.1"/>
@@ -971,7 +971,6 @@
                 <Border Background="#10FFFFFF" CornerRadius="12,0,0,12" BorderBrush="#20FFFFFF" BorderThickness="0,0,1,0">
                     <DockPanel>
                         <TextBlock Text="设置中心" DockPanel.Dock="Top" Margin="20,20,20,10" FontSize="18" FontWeight="Bold"/>
-                        <Button Content="关闭" DockPanel.Dock="Bottom" Style="{StaticResource BaseButtonStyle}" Height="35" Margin="10" Click="BtnVersionSettings_Click" Tag="8"/>
                         <ListBox x:Name="ListSettingsCategories" Background="Transparent" BorderThickness="0" Margin="5" SelectionChanged="ListSettingsCategories_SelectionChanged">
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem">
@@ -1193,8 +1192,10 @@
                                                         <WrapPanel Margin="0,0,0,10">
                                                             <RadioButton x:Name="RadioVanilla_Settings_Download" Content="Vanilla" IsChecked="True" Foreground="White" Margin="0,0,10,5" Checked="LoaderRadio_Checked" FontSize="11"/>
                                                             <RadioButton x:Name="RadioForge_Settings" Content="Forge" Foreground="White" Margin="0,0,10,5" Checked="LoaderRadio_Checked" FontSize="11"/>
+                                                            <RadioButton x:Name="RadioNeoForge_Settings_Download" Content="NeoForge" Foreground="White" Margin="0,0,10,5" Checked="LoaderRadio_Checked" FontSize="11"/>
                                                             <RadioButton x:Name="RadioFabric_Settings_Download" Content="Fabric" Foreground="White" Margin="0,0,10,5" Checked="LoaderRadio_Checked" FontSize="11"/>
-                                                            <RadioButton x:Name="RadioQuilt_Settings_Download" Content="Quilt" Foreground="White" Checked="LoaderRadio_Checked" FontSize="11"/>
+                                                            <RadioButton x:Name="RadioQuilt_Settings_Download" Content="Quilt" Foreground="White" Margin="0,0,10,5" Checked="LoaderRadio_Checked" FontSize="11"/>
+                                                            <RadioButton x:Name="RadioLiteLoader_Settings_Download" Content="LiteLoader" Foreground="White" Checked="LoaderRadio_Checked" FontSize="11"/>
                                                         </WrapPanel>
 
                                                         <ComboBox x:Name="ComboLoaderVersions_Settings" Height="32" Margin="0,0,0,15" Visibility="Collapsed" FontSize="12"/>

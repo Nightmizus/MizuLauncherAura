@@ -49,7 +49,7 @@ namespace MizuLauncher
         private async Task<string> ListLocalFilesAsync(string folderName, string searchPattern)
         {
             var selectedVersion = await _mainWindow.Dispatcher.InvokeAsync(() =>
-                _mainWindow.ListVersionsCenter.SelectedItem?.ToString());
+                (_mainWindow.ListVersionsCenter.SelectedItem as VersionItemInfo)?.Name);
 
             if (string.IsNullOrEmpty(selectedVersion))
             {
@@ -96,24 +96,46 @@ namespace MizuLauncher
                     return moddedNode.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
                 }
 
+                string versionDir = Path.Combine(_mainWindow.GetBaseMcPath()?.Versions ?? "", inheritsFrom);
+                bool dirExisted = Directory.Exists(versionDir);
+
                 // 获取父版本（纯净版）的元数据
                 var parentVersion = await launcher.GetVersionAsync(inheritsFrom);
                 if (parentVersion == null) return moddedJson;
 
                 // 尝试读取父版本的本地 JSON 文件内容
                 string parentJsonPath = Path.Combine(_mainWindow.GetBaseMcPath()?.Versions ?? "", inheritsFrom, $"{inheritsFrom}.json");
+                
                 string parentJson;
                 if (File.Exists(parentJsonPath))
                 {
                     parentJson = await File.ReadAllTextAsync(parentJsonPath);
+                    // 如果文件存在但一开始文件夹不存在，说明是 GetVersionAsync 下载的
+                    if (!dirExisted && Directory.Exists(versionDir))
+                    {
+                        try
+                        {
+                            Directory.Delete(versionDir, true);
+                        }
+                        catch { }
+                    }
                 }
                 else
                 {
                     // 如果本地没有，尝试从 Mojang 下载
-                    // CmlLib.Core 4.x 内部会处理这个，但我们需要 JSON 内容来合并
-                    // 这里我们通过重新安装父版本来确保它存在，或者直接从网络获取
                     await launcher.InstallAsync(inheritsFrom);
                     parentJson = await File.ReadAllTextAsync(parentJsonPath);
+                    
+                    // 如果我们是为了打平而临时下载的纯净版json，并且原本不存在该版本文件夹，我们可以在读取后将其删除
+                    // 这样就不会多出一个只有json的纯净版文件夹
+                    if (!dirExisted && Directory.Exists(versionDir))
+                    {
+                        try
+                        {
+                            Directory.Delete(versionDir, true);
+                        }
+                        catch { }
+                    }
                 }
 
                 var parentNode = JsonNode.Parse(parentJson);
@@ -351,7 +373,7 @@ namespace MizuLauncher
             [Description("资源类型: mod, shader, resourcepack")] string type)
         {
             var selectedVersion = await _mainWindow.Dispatcher.InvokeAsync(() =>
-                _mainWindow.ListVersionsCenter.SelectedItem?.ToString());
+                (_mainWindow.ListVersionsCenter.SelectedItem as VersionItemInfo)?.Name);
 
             if (string.IsNullOrEmpty(selectedVersion))
             {
@@ -425,7 +447,7 @@ namespace MizuLauncher
             [Description("资源类型: mod, shader, resourcepack")] string type)
         {
             var selectedVersion = await _mainWindow.Dispatcher.InvokeAsync(() =>
-                _mainWindow.ListVersionsCenter.SelectedItem?.ToString());
+                (_mainWindow.ListVersionsCenter.SelectedItem as VersionItemInfo)?.Name);
 
             if (string.IsNullOrEmpty(selectedVersion))
             {
@@ -688,12 +710,24 @@ namespace MizuLauncher
                 var launcher = _mainWindow.GetLauncher();
                 if (launcher == null) return "错误：启动器实例未初始化。";
 
+                launcher.FileProgressChanged += (s, args) =>
+                {
+                    if (args.TotalTasks > 0)
+                    {
+                        double progress = (double)args.ProgressedTasks / args.TotalTasks;
+                        task.Progress = (int)(progress * 100);
+                        _mainWindow.UpdateAIStatus($"正在下载: {args.Name}", progress);
+                    }
+                    task.Status = $"正在下载: {args.Name}";
+                };
+
                 task.Status = "正在安装 NeoForge...";
                 _mainWindow.UpdateAIStatus("正在安装 NeoForge...", 0.5);
                 var neoInstaller = new NeoForgeInstaller(launcher);
                 await neoInstaller.Install(mcVersion, neoforgeVersion);
 
                 CompleteTask(task);
+                _mainWindow.CallRefreshVersionList();
                 return $"成功：NeoForge {mcVersion}-{neoforgeVersion} 已安装。";
             }
             catch (Exception ex)
@@ -706,14 +740,15 @@ namespace MizuLauncher
         public async Task<string> GetNeoForgeVersionsAsync(
             [Description("Minecraft 版本号")] string mcVersion)
         {
-            await Task.Yield();
             try
             {
-                var launcher = _mainWindow.GetLauncher();
-                if (launcher == null) return "错误：启动器实例未初始化。";
-
-                // 暂时返回一个通用的提示，因为不同版本的 NeoForge 安装器 API 可能不同
-                return "请访问 NeoForge 官网查看版本，或尝试输入具体版本号进行安装。";
+                var response = await _httpClient.GetStringAsync($"https://bmclapi2.bangbang93.com/neoforge/list/{mcVersion}");
+                using var doc = JsonDocument.Parse(response);
+                var versions = doc.RootElement.EnumerateArray()
+                    .Take(5)
+                    .Select(item => item.GetProperty("version").GetString())
+                    .ToList();
+                return JsonSerializer.Serialize(versions);
             }
             catch (Exception ex)
             {

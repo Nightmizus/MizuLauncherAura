@@ -4,6 +4,8 @@
              xmlns:local="clr-namespace:MizuLauncher"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
+        <CornerRadius x:Key="MainCornerRadius">12</CornerRadius>
+        
         <Style TargetType="ToolTip">
             <Setter Property="Background" Value="#F02A2A2A"/>
             <Setter Property="Foreground" Value="White"/>
@@ -18,7 +20,7 @@
                         <Border Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="8">
+                                CornerRadius="{StaticResource MainCornerRadius}">
                             <ContentPresenter Margin="{TemplateBinding Padding}"/>
                         </Border>
                     </ControlTemplate>

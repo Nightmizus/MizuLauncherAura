@@ -4,7 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="添加账号" Height="300" Width="450"
+        Title="添加账号" Width="450" SizeToContent="Height"
         Icon="res/icon.png"
         WindowStartupLocation="CenterOwner"
         Background="Transparent"
@@ -21,7 +21,6 @@
     </WindowChrome.WindowChrome>
 
     <Window.Resources>
-        <CornerRadius x:Key="MainCornerRadius">12</CornerRadius>
         <SolidColorBrush x:Key="CardBackground" Color="White" Opacity="0.03"/>
         <SolidColorBrush x:Key="CardBorder" Color="Transparent"/>
 
@@ -183,10 +182,10 @@
                     </TextBlock>
                 </Grid>
 
-                <Grid Margin="0,0,0,10">
-                    <Separator Background="#20FFFFFF" VerticalAlignment="Center"/>
-                    <TextBlock Text="或" HorizontalAlignment="Center" Background="#FF121212" Padding="10,0" Foreground="#40FFFFFF" FontSize="12"/>
-                </Grid>
+
+                <!-- 第三方登录 (LittleSkin / Yggdrasil) -->
+                <TextBlock Text="第三方登录" Foreground="#80FFFFFF" FontSize="12" Margin="5,0,0,5"/>
+                <Button x:Name="BtnLittleSkinLogin" Content="添加第三方账号 (Yggdrasil / LittleSkin)" Height="40" Margin="0,0,0,10" Style="{StaticResource BaseButtonStyle}" Background="#20FFFFFF" BorderThickness="1" BorderBrush="#30FFFFFF" Click="BtnLittleSkinLogin_Click"/>
 
                 <!-- 微软账号 -->
                 <TextBlock Text="微软登录" Foreground="#80FFFFFF" FontSize="12" Margin="5,0,0,5"/>
