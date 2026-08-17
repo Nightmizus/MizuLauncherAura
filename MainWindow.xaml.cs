@@ -1328,9 +1328,8 @@ namespace MizuLauncher
                             }
                         }
 
-                        // 使用 URI 格式加载本地文件，确保 WPF 正确识别
-                        string iconFullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "res", "clienticon", icon);
-                        string iconUri = new Uri(iconFullPath).AbsoluteUri;
+                        // 从内嵌资源中加载图标
+                        string iconUri = $"pack://application:,,,/res/clienticon/{icon}";
 
                         FilteredVersions.Add(new VersionItemInfo
                         {

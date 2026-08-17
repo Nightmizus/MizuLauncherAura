@@ -11,9 +11,7 @@
 
   <ItemGroup>
     <Resource Include="res\icon.png" />
-    <None Update="res\clienticon\*.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <Resource Include="res\clienticon\*.png" />
   </ItemGroup>
 
   <ItemGroup>
